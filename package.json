@@ -1,0 +1,27 @@
+{
+  "name": "workflow-temporal",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc --noEmit -p tsconfig.json",
+    "test": "npm run test:smoke",
+    "test:smoke": "npm run build && node --test dist/testing/hello-world-bundle-smoke.test.js",
+    "worker": "tsx src/worker/run-worker.ts",
+    "workflow:start": "tsx src/client/start-hello-world.ts"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@temporalio/client": "^1.16.0",
+    "@temporalio/worker": "^1.16.0",
+    "@temporalio/workflow": "^1.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
+  }
+}
