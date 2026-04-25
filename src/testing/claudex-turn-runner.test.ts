@@ -99,6 +99,40 @@ test('runClaudexTurn falls back to a fresh session when resumed session fails la
   assert.equal(adapter.resumedRunCalls, 1);
 });
 
+test('runClaudexTurn falls back to a fresh session when resume fails immediately as stale', async () => {
+  const adapter = new ImmediateStaleResumeAdapter();
+
+  const response = await runClaudexTurn(createTurnRequest(), {
+    createAdapter: () => adapter,
+    timeoutMs: 1_000
+  });
+
+  assert.equal(response.outcome, 'completed');
+  assert.equal(response.provider, 'claude');
+  assert.equal(response.sessionRef?.sessionId, 'fresh-session');
+  assert.equal(response.text, 'fresh result');
+  assert.equal(adapter.resumeCalls, 1);
+  assert.equal(adapter.createCalls, 1);
+});
+
+test('runClaudexTurn does not fall back when immediate resume failure is not stale', async () => {
+  const adapter = new ImmediatePermissionDeniedResumeAdapter();
+
+  const response = await runClaudexTurn(createTurnRequest(), {
+    createAdapter: () => adapter,
+    timeoutMs: 1_000
+  });
+
+  assert.equal(response.outcome, 'failed');
+  assert.equal(response.provider, 'claude');
+  assert.equal(response.errorMessage, 'Permission denied while resuming session.');
+  assert.equal(response.failure.kind, 'turn_failed');
+  assert.equal(response.failure.code, 'permission_denied');
+  assert.equal(response.sessionRef, undefined);
+  assert.equal(adapter.resumeCalls, 1);
+  assert.equal(adapter.createCalls, 0);
+});
+
 function createTurnRequest(): ClaudexTurnRequest {
   return {
     objective: 'Complete one bounded turn.',
@@ -160,6 +194,60 @@ class LazyStaleResumeAdapter implements ClaudexRuntimeAdapter {
   }
 }
 
+class ImmediateStaleResumeAdapter implements ClaudexRuntimeAdapter {
+  createCalls = 0;
+  resumeCalls = 0;
+
+  async checkReadiness(): Promise<ProviderReadiness> {
+    return readyReadiness;
+  }
+
+  async createSession(_options?: SessionOptions): Promise<AgentSession> {
+    this.createCalls += 1;
+
+    return createFreshSession();
+  }
+
+  async resumeSession(
+    _reference: SessionReference,
+    _options?: SessionOptions
+  ): Promise<AgentSession> {
+    this.resumeCalls += 1;
+    throw new AgentError({
+      code: 'provider_failure',
+      provider: 'claude',
+      message: 'Session not found for resume id stale-session.'
+    });
+  }
+}
+
+class ImmediatePermissionDeniedResumeAdapter implements ClaudexRuntimeAdapter {
+  createCalls = 0;
+  resumeCalls = 0;
+
+  async checkReadiness(): Promise<ProviderReadiness> {
+    return readyReadiness;
+  }
+
+  async createSession(_options?: SessionOptions): Promise<AgentSession> {
+    this.createCalls += 1;
+
+    return createFreshSession();
+  }
+
+  async resumeSession(
+    _reference: SessionReference,
+    _options?: SessionOptions
+  ): Promise<AgentSession> {
+    this.resumeCalls += 1;
+    throw new AgentError({
+      code: 'permission_denied',
+      provider: 'claude',
+      message: 'Permission denied while resuming session.'
+    });
+  }
+}
+
 class FakeSession implements AgentSession {
   readonly provider = 'claude';
   readonly capabilities = capabilities;
@@ -176,4 +264,22 @@ class FakeSession implements AgentSession {
   async *runStreamed(): AsyncGenerator<never> {
     throw new Error('FakeSession.runStreamed is not implemented for these tests.');
   }
+}
+
+function createFreshSession(): AgentSession {
+  return new FakeSession(
+    {
+      provider: 'claude',
+      sessionId: 'fresh-session'
+    },
+    async () => ({
+      provider: 'claude',
+      session: {
+        provider: 'claude',
+        sessionId: 'fresh-session'
+      },
+      text: 'fresh result',
+      usage: null
+    })
+  );
 }

@@ -238,7 +238,11 @@ async function createOrResumeSession({
       session: await adapter.resumeSession(request.priorSessionRef, sessionOptions),
       resumeSessionRef: request.priorSessionRef
     };
-  } catch {
+  } catch (error: unknown) {
+    if (!isRecoverableResumeFailure(error)) {
+      throw error;
+    }
+
     return {
       session: await adapter.createSession(sessionOptions)
     };
