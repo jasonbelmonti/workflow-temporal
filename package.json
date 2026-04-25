@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc --noEmit -p tsconfig.json",
-    "test": "npm run test:smoke",
+    "test": "npm run test:runner && npm run test:smoke",
+    "test:runner": "npm run build && node --test dist/testing/claudex-turn-runner.test.js",
     "test:smoke": "npm run build && node --test dist/testing/hello-world-bundle-smoke.test.js",
     "worker": "tsx src/worker/run-worker.ts",
     "workflow:start": "tsx src/client/start-hello-world.ts"
@@ -15,6 +16,7 @@
     "node": ">=22"
   },
   "dependencies": {
+    "@jasonbelmonti/claudex": "^2.0.0",
     "@temporalio/client": "^1.16.0",
     "@temporalio/worker": "^1.16.0",
     "@temporalio/workflow": "^1.16.0"
