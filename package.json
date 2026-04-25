@@ -6,7 +6,10 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc --noEmit -p tsconfig.json",
-    "test": "npm run test:smoke",
+    "test": "npm run test:offline",
+    "test:offline": "npm run test:runner",
+    "test:runner": "npm run build && node --test dist/testing/claudex-turn-runner.test.js",
+    "test:bridge": "npm run test:runner",
     "test:smoke": "npm run build && node --test dist/testing/hello-world-bundle-smoke.test.js",
     "worker": "tsx src/worker/run-worker.ts",
     "workflow:start": "tsx src/client/start-hello-world.ts"
