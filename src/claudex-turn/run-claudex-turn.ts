@@ -1,6 +1,7 @@
 import {
   AgentError,
   isAgentError,
+  type AgentSession,
   type ProviderReadiness,
   type SessionOptions
 } from '@jasonbelmonti/claudex';
@@ -169,6 +170,40 @@ async function executeClaudexTurn({
 
   onSessionStarted(sessionRef);
 
+  try {
+    return await runSessionTurn({ request, session, sessionRef, signal });
+  } catch (error: unknown) {
+    if (!resumeSessionRef || !isRecoverableResumeFailure(error)) {
+      throw error;
+    }
+
+    onSessionStarted(undefined);
+
+    const freshSession = await adapter.createSession(effectiveSessionOptions);
+    const freshSessionRef = normalizeClaudexSessionRef(freshSession.reference, readiness.provider);
+
+    onSessionStarted(freshSessionRef);
+
+    return await runSessionTurn({
+      request,
+      session: freshSession,
+      sessionRef: freshSessionRef,
+      signal
+    });
+  }
+}
+
+async function runSessionTurn({
+  request,
+  session,
+  sessionRef,
+  signal
+}: {
+  request: ClaudexTurnRequest;
+  session: AgentSession;
+  sessionRef: ClaudexSessionRef | undefined;
+  signal: AbortSignal;
+}): Promise<ClaudexTurnResponse> {
   const result = await session.run(buildTurnInput(request), {
     signal,
     metadata: {
@@ -242,6 +277,25 @@ function buildRunnerFailureResponse(
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function isRecoverableResumeFailure(error: unknown): boolean {
+  if (!isAgentError(error)) {
+    return false;
+  }
+
+  if (error.code !== 'provider_failure' && error.code !== 'unknown') {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  const mentionsResumeState = /session|conversation|thread|resume/.test(message);
+  const looksStale =
+    /not found|missing|expired|invalid|stale|unknown|does not exist|could not find|cannot find|can't find/.test(
+      message
+    );
+
+  return mentionsResumeState && looksStale;
 }
 
 function isRunnableProviderReadiness(readiness: ProviderReadiness): boolean {

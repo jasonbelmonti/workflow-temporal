@@ -6,6 +6,11 @@ export async function runWithControls<T>(
   let timeoutId: NodeJS.Timeout | undefined;
   let removeAbortListener: (() => void) | undefined;
 
+  if (signal?.aborted) {
+    controller.abort();
+    throw new RunnerAbortError();
+  }
+
   const controlPromise = new Promise<never>((_, reject) => {
     if (signal) {
       const onAbort = (): void => {
@@ -22,8 +27,6 @@ export async function runWithControls<T>(
         controller.abort();
         reject(new RunnerTimeoutError());
       }, timeoutMs);
-
-      timeoutId.unref();
     }
   });
 
