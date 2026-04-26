@@ -68,12 +68,21 @@ npm run check
 npm run build
 ```
 
+## Run offline tests
+
+These deterministic tests exercise the bounded Claudex turn runner without requiring a
+local Temporal dev server.
+
+```bash
+npm test
+```
+
 ## Smoke test the bundled workflow path
 
 This smoke test exercises the compiled worker bundle against your local Temporal dev server.
 
 ```bash
-npm test
+npm run test:smoke
 ```
 
 ## Inspect in Temporal UI
