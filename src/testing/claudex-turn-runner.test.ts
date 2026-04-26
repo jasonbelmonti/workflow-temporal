@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 
 import {
@@ -23,6 +24,33 @@ import {
   type ClaudexRuntimeAdapter,
   type ClaudexTurnRequest
 } from '../claudex-turn/index.js';
+
+test('runWithControls keeps the timeout active for non-cooperative hung tasks', () => {
+  const child = spawnSync(
+    process.execPath,
+    [
+      '--input-type=module',
+      '--eval',
+      [
+        "import { runWithControls } from './dist/claudex-turn/runner-controls.js';",
+        'try {',
+        '  await runWithControls(() => new Promise(() => undefined), { timeoutMs: 25 });',
+        "  console.log('resolved');",
+        '} catch (error) {',
+        '  console.log(error.constructor.name);',
+        '}'
+      ].join('\n')
+    ],
+    {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+      timeout: 1_000
+    }
+  );
+
+  assert.equal(child.status, 0);
+  assert.match(child.stdout, /RunnerTimeoutError/);
+});
 
 const turnRequest: ClaudexTurnRequest = {
   objective: 'Prove the direct Claudex turn runner',
