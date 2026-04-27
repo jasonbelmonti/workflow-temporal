@@ -1,4 +1,11 @@
-import { condition, defineQuery, defineSignal, setHandler, workflowInfo } from '@temporalio/workflow';
+import {
+  condition,
+  defineQuery,
+  defineSignal,
+  log,
+  setHandler,
+  workflowInfo
+} from '@temporalio/workflow';
 
 import {
   cancelRunSignalName,
@@ -14,8 +21,8 @@ import {
   buildHelloClaudexResult,
   createInitialHelloClaudexState,
   isTerminalHelloClaudexStatus,
-  normalizeCancelRunSignal,
-  normalizeSubmitHumanInputSignal
+  tryNormalizeCancelRunSignal,
+  tryNormalizeSubmitHumanInputSignal
 } from './hello-claudex-state.js';
 
 const getHelloClaudexStateQuery = defineQuery<HelloClaudexState>(
@@ -37,7 +44,14 @@ export async function helloClaudexWorkflow(
       return;
     }
 
-    state.pendingHumanInput = normalizeSubmitHumanInputSignal(signal);
+    const pendingHumanInput = tryNormalizeSubmitHumanInputSignal(signal);
+
+    if (!pendingHumanInput.valid) {
+      logInvalidSignalPayload(submitHumanInputSignalName, pendingHumanInput.errorMessage);
+      return;
+    }
+
+    state.pendingHumanInput = pendingHumanInput.value;
     state.humanInputCount += 1;
 
     if (state.status === 'waiting_for_input') {
@@ -50,9 +64,15 @@ export async function helloClaudexWorkflow(
       return;
     }
 
-    const cancellation = normalizeCancelRunSignal(signal);
+    const cancellation = tryNormalizeCancelRunSignal(signal);
+
+    if (!cancellation.valid) {
+      logInvalidSignalPayload(cancelRunSignalName, cancellation.errorMessage);
+      return;
+    }
+
     state.status = 'cancelled';
-    state.cancelReason = cancellation.reason;
+    state.cancelReason = cancellation.value.reason;
   });
 
   await condition(() => isTerminalHelloClaudexStatus(state.status));
@@ -61,3 +81,10 @@ export async function helloClaudexWorkflow(
 }
 
 export { helloClaudexWorkflow as 'agent.helloClaudex' };
+
+function logInvalidSignalPayload(signalName: string, errorMessage: string): void {
+  log.warn('Ignored invalid hello Claudex signal payload', {
+    signalName,
+    errorMessage
+  });
+}

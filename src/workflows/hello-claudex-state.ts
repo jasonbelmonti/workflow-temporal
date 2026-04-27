@@ -56,7 +56,7 @@ export function createInitialHelloClaudexState(
 }
 
 export function normalizeSubmitHumanInputSignal(
-  signal: SubmitHumanInputSignal
+  signal: unknown
 ): HelloClaudexPendingHumanInput {
   if (!isRecord(signal)) {
     throw new TypeError('submitHumanInput signal must be a JSON object.');
@@ -71,7 +71,7 @@ export function normalizeSubmitHumanInputSignal(
   return correlationId === undefined ? { text } : { text, correlationId };
 }
 
-export function normalizeCancelRunSignal(signal: CancelRunSignal = {}): CancelRunSignal {
+export function normalizeCancelRunSignal(signal: unknown = {}): CancelRunSignal {
   if (!isRecord(signal)) {
     throw new TypeError('cancelRun signal must be a JSON object when present.');
   }
@@ -79,6 +79,18 @@ export function normalizeCancelRunSignal(signal: CancelRunSignal = {}): CancelRu
   const reason = trimOptionalString(signal.reason, 'cancelRun.reason');
 
   return reason === undefined ? {} : { reason };
+}
+
+export function tryNormalizeSubmitHumanInputSignal(
+  signal: unknown
+): HelloClaudexSignalPayloadResult<HelloClaudexPendingHumanInput> {
+  return tryNormalizeSignalPayload(() => normalizeSubmitHumanInputSignal(signal));
+}
+
+export function tryNormalizeCancelRunSignal(
+  signal: unknown
+): HelloClaudexSignalPayloadResult<CancelRunSignal> {
+  return tryNormalizeSignalPayload(() => normalizeCancelRunSignal(signal));
 }
 
 export function isTerminalHelloClaudexStatus(
@@ -169,4 +181,32 @@ function trimOptionalString(value: unknown, fieldName: string): string | undefin
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+export type HelloClaudexSignalPayloadResult<T> =
+  | {
+      valid: true;
+      value: T;
+    }
+  | {
+      valid: false;
+      errorMessage: string;
+    };
+
+function tryNormalizeSignalPayload<T>(normalize: () => T): HelloClaudexSignalPayloadResult<T> {
+  try {
+    return {
+      valid: true,
+      value: normalize()
+    };
+  } catch (error: unknown) {
+    return {
+      valid: false,
+      errorMessage: getErrorMessage(error)
+    };
+  }
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

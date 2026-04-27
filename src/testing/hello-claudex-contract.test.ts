@@ -8,7 +8,9 @@ import {
   createInitialHelloClaudexState,
   normalizeCancelRunSignal,
   normalizeSubmitHumanInputSignal,
-  resolveHelloClaudexInput
+  resolveHelloClaudexInput,
+  tryNormalizeCancelRunSignal,
+  tryNormalizeSubmitHumanInputSignal
 } from '../workflows/hello-claudex-state.js';
 import { buildHelloClaudexWorkflowId } from '../workflows/hello-claudex-workflow-id.js';
 
@@ -83,6 +85,18 @@ test('hello Claudex signal payloads are explicit JSON-safe objects', () => {
 
   assert.deepEqual(normalizeCancelRunSignal({ reason: '  operator stop  ' }), {
     reason: 'operator stop'
+  });
+});
+
+test('hello Claudex signal payload validation can reject malformed payloads without throwing', () => {
+  assert.deepEqual(tryNormalizeSubmitHumanInputSignal({}), {
+    valid: false,
+    errorMessage: 'submitHumanInput.text must be a non-empty string.'
+  });
+
+  assert.deepEqual(tryNormalizeCancelRunSignal('stop'), {
+    valid: false,
+    errorMessage: 'cancelRun signal must be a JSON object when present.'
   });
 });
 

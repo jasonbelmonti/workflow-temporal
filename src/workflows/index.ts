@@ -50,7 +50,10 @@ export {
   isTerminalHelloClaudexStatus,
   normalizeCancelRunSignal,
   normalizeSubmitHumanInputSignal,
-  resolveHelloClaudexInput
+  resolveHelloClaudexInput,
+  tryNormalizeCancelRunSignal,
+  tryNormalizeSubmitHumanInputSignal,
+  type HelloClaudexSignalPayloadResult
 } from './hello-claudex-state.js';
 
 export {
