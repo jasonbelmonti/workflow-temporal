@@ -98,6 +98,16 @@ test('hello Claudex signal payload validation can reject malformed payloads with
     valid: false,
     errorMessage: 'cancelRun signal must be a JSON object when present.'
   });
+
+  assert.deepEqual(tryNormalizeSubmitHumanInputSignal([]), {
+    valid: false,
+    errorMessage: 'submitHumanInput signal must be a JSON object.'
+  });
+
+  assert.deepEqual(tryNormalizeCancelRunSignal([]), {
+    valid: false,
+    errorMessage: 'cancelRun signal must be a JSON object when present.'
+  });
 });
 
 test('hello Claudex result projection only accepts terminal state', () => {

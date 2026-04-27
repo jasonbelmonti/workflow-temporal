@@ -180,7 +180,7 @@ function trimOptionalString(value: unknown, fieldName: string): string | undefin
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 export type HelloClaudexSignalPayloadResult<T> =
