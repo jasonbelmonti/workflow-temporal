@@ -8,10 +8,11 @@
     "check": "tsc --noEmit -p tsconfig.json",
     "test": "npm run test:offline",
     "test:offline": "npm run test:runner",
-    "test:runner": "npm run build && node --test dist/testing/claudex-turn-runner.test.js dist/testing/run-claudex-turn-activity.test.js",
+    "test:runner": "npm run build && node --test dist/testing/claudex-turn-runner.test.js dist/testing/run-claudex-turn-activity.test.js dist/testing/hello-claudex-contract.test.js",
     "test:smoke": "npm run build && node --test dist/testing/hello-world-bundle-smoke.test.js",
     "worker": "tsx src/worker/run-worker.ts",
-    "workflow:start": "tsx src/client/start-hello-world.ts"
+    "workflow:start": "tsx src/client/start-hello-world.ts",
+    "workflow:start:hello-claudex": "tsx src/client/start-hello-claudex.ts"
   },
   "engines": {
     "node": ">=22"
