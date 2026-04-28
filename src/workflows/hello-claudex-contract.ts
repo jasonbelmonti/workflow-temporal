@@ -2,7 +2,8 @@ import type {
   ClaudexArtifactRef,
   ClaudexProvider,
   ClaudexRequestedProvider,
-  ClaudexSessionRef
+  ClaudexSessionRef,
+  ClaudexTurnFailure
 } from '../claudex-turn/turn-contract.js';
 
 export const helloClaudexWorkflowType = 'agent.helloClaudex';
@@ -35,6 +36,7 @@ export type HelloClaudexProvider = ClaudexProvider;
 export type HelloClaudexRequestedProvider = ClaudexRequestedProvider;
 export type HelloClaudexSessionRef = ClaudexSessionRef;
 export type HelloClaudexArtifactRef = ClaudexArtifactRef;
+export type HelloClaudexTurnFailure = ClaudexTurnFailure;
 export type HelloClaudexStatus = (typeof helloClaudexStatuses)[number];
 export type HelloClaudexTerminalStatus = Extract<
   HelloClaudexStatus,
@@ -83,6 +85,7 @@ export interface HelloClaudexState {
   sessionRef?: HelloClaudexSessionRef;
   artifactRefs: HelloClaudexArtifactRef[];
   lastError?: string;
+  lastFailure?: HelloClaudexTurnFailure;
   cancelReason?: string;
 }
 
@@ -99,6 +102,7 @@ export interface HelloClaudexResult {
   sessionRef?: HelloClaudexSessionRef;
   artifactRefs: HelloClaudexArtifactRef[];
   lastError?: string;
+  lastFailure?: HelloClaudexTurnFailure;
   cancelReason?: string;
 }
 

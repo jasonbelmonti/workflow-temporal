@@ -55,12 +55,14 @@ export function applyHelloClaudexTurnResponse(
     delete state.pendingHumanInput;
     delete state.waitingReason;
     delete state.lastError;
+    delete state.lastFailure;
     return;
   }
 
   if (response.outcome === 'failed') {
     state.status = 'failed';
     state.lastError = response.errorMessage;
+    state.lastFailure = response.failure;
     delete state.pendingHumanInput;
     delete state.waitingReason;
     return;
@@ -76,6 +78,7 @@ export function applyHelloClaudexTurnResponse(
   state.status = 'waiting_for_input';
   state.waitingReason = response.waitingReason;
   delete state.lastError;
+  delete state.lastFailure;
 }
 
 export function failHelloClaudexTurn(state: HelloClaudexState, error: unknown): void {
@@ -83,12 +86,14 @@ export function failHelloClaudexTurn(state: HelloClaudexState, error: unknown): 
   state.lastError = getErrorMessage(error);
   delete state.pendingHumanInput;
   delete state.waitingReason;
+  delete state.lastFailure;
 }
 
 export function cancelHelloClaudexTurn(state: HelloClaudexState): void {
   state.status = 'cancelled';
   delete state.pendingHumanInput;
   delete state.lastError;
+  delete state.lastFailure;
   delete state.waitingReason;
 }
 
