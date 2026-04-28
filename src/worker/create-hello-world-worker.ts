@@ -3,12 +3,13 @@ import { fileURLToPath } from 'node:url';
 
 import { NativeConnection, Worker } from '@temporalio/worker';
 
-import * as activities from '../activities/index.js';
+import * as defaultActivities from '../activities/index.js';
 import { helloWorldTaskQueue } from '../workflows/index.js';
 
 export interface CreateHelloWorldWorkerOptions {
   connection: NativeConnection;
   taskQueue?: string;
+  activities?: typeof defaultActivities;
 }
 
 function resolveWorkflowsPath(): string {
@@ -20,7 +21,8 @@ function resolveWorkflowsPath(): string {
 
 export async function createHelloWorldWorker({
   connection,
-  taskQueue = helloWorldTaskQueue
+  taskQueue = helloWorldTaskQueue,
+  activities = defaultActivities
 }: CreateHelloWorldWorkerOptions): Promise<Worker> {
   return Worker.create({
     connection,
