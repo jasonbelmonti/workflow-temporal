@@ -224,7 +224,12 @@ test('hello Claudex maps failed turn responses into terminal workflow state', ()
       sessionId: 'session-1'
     },
     artifactRefs: [],
-    lastError: 'Claudex provider claude is not ready: unavailable.'
+    lastError: 'Claudex provider claude is not ready: unavailable.',
+    lastFailure: {
+      kind: 'readiness_failed',
+      code: 'unavailable',
+      message: 'Claude CLI was not available.'
+    }
   });
 });
 

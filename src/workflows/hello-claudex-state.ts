@@ -136,6 +136,10 @@ export function buildHelloClaudexResult(state: HelloClaudexState): HelloClaudexR
     result.lastError = state.lastError;
   }
 
+  if (state.lastFailure !== undefined) {
+    result.lastFailure = state.lastFailure;
+  }
+
   if (state.cancelReason !== undefined) {
     result.cancelReason = state.cancelReason;
   }
