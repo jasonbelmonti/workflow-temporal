@@ -1,3 +1,5 @@
+import { pathToFileURL } from 'node:url';
+
 import { Client, Connection } from '@temporalio/client';
 
 import { temporalAddress } from '../lib/config.js';
@@ -128,8 +130,14 @@ function readOptionalFlag(argv: string[], flag: string): string | undefined {
   return value;
 }
 
-startHelloClaudex().catch((error: unknown) => {
-  console.error('Failed to start hello Claudex workflow');
-  console.error(error);
-  process.exit(1);
-});
+if (isMainModule()) {
+  startHelloClaudex().catch((error: unknown) => {
+    console.error('Failed to start hello Claudex workflow');
+    console.error(error);
+    process.exit(1);
+  });
+}
+
+function isMainModule(): boolean {
+  return process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
+}
