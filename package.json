@@ -19,7 +19,7 @@
     "node": ">=22"
   },
   "dependencies": {
-    "@jasonbelmonti/claudex": "^2.0.0",
+    "@jasonbelmonti/claudex": "^2.1.1",
     "@temporalio/activity": "^1.16.0",
     "@temporalio/client": "^1.16.0",
     "@temporalio/worker": "^1.16.0",

@@ -10,7 +10,8 @@ import {
   startHelloClaudexWorkflow,
   type StartHelloClaudexResult
 } from './start-hello-claudex.js';
-import type { LiveHelloClaudexSmokeConfig } from './live-claudex-smoke-config.js';
+import { type LiveHelloClaudexSmokeConfig } from './live-claudex-smoke-config.js';
+import { createLiveHelloClaudexSmokeActivities } from './live-claudex-smoke-activities.js';
 
 export interface LiveHelloClaudexSmokeReport {
   workflowType: string;
@@ -19,6 +20,8 @@ export interface LiveHelloClaudexSmokeReport {
   taskQueue: string;
   temporalAddress: string;
   input: LiveHelloClaudexSmokeConfig['input'];
+  turnTimeoutMs: number;
+  turnModel?: string;
   result: HelloClaudexResult;
 }
 
@@ -35,7 +38,8 @@ export async function runLiveHelloClaudexSmoke(
     const client = new Client({ connection: clientConnection });
     const worker = await createHelloWorldWorker({
       connection: workerConnection,
-      taskQueue: config.taskQueue
+      taskQueue: config.taskQueue,
+      activities: createLiveHelloClaudexSmokeActivities(config)
     });
     const { started, result } = await worker.runUntil(
       () => startAndAwaitHelloClaudexWorkflow(client, config),
@@ -49,6 +53,8 @@ export async function runLiveHelloClaudexSmoke(
       taskQueue: started.taskQueue,
       temporalAddress: config.address,
       input: config.input,
+      turnTimeoutMs: config.turnTimeoutMs,
+      ...(config.turnModel === undefined ? {} : { turnModel: config.turnModel }),
       result
     };
   } finally {
