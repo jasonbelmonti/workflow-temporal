@@ -209,8 +209,8 @@ Complete
 States and transitions:
 Recipe state transitions are `draft` -> `validated` -> `published` -> `pinned snapshot` -> `superseded`. Run state transitions are `created` -> `running` -> `waiting_on_gate` -> `running` -> `completed`, `failed`, `cancelled`, or `abandoned`. Step state transitions are `pending` -> `running` -> `completed`, `blocked`, `failed`, `cancelled`, or `skipped`. Queue item state transitions are `open` -> `approved`, `rejected`, `cancelled`, or `resolved`; `packaged` is not a queue item state. Review packet state transitions are `draft` -> `presented` -> `superseded`. Triage writes only derived review packet artifacts that reference still-open queue item IDs and never mutates queue item status, gate revision, or workflow state.
 
-| Scenario | Expected behavior | Invariant maintained | Related IDs |
-| --- | --- | --- | --- |
+| ID | Scenario | Expected behavior | Invariant maintained | Related IDs |
+| --- | --- | --- | --- | --- |
 | Fault-1 | Registry is unavailable after a workflow starts. | The workflow continues using the pinned recipe snapshot or fails only when a new run cannot resolve a recipe. | Running workflows do not depend on live registry reads. | REQ-2, REQ-13, FUNC-1 |
 | Fault-2 | Provider session resume fails. | The activity starts from workflow-owned objective, summary, human inputs, and artifact references. | Provider sessions remain non-authoritative hints. | REQ-12, FLOW-3 |
 | Fault-3 | Approval signal references a stale gate revision. | The workflow rejects the signal and keeps the queue item open or records a stale-decision audit event. | A decision cannot resume the wrong gate state. | REQ-7, FUNC-3 |
