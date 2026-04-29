@@ -10,11 +10,8 @@ import {
   startHelloClaudexWorkflow,
   type StartHelloClaudexResult
 } from './start-hello-claudex.js';
-import {
-  claudexTurnModelEnvName,
-  claudexTurnTimeoutEnvName,
-  type LiveHelloClaudexSmokeConfig
-} from './live-claudex-smoke-config.js';
+import { type LiveHelloClaudexSmokeConfig } from './live-claudex-smoke-config.js';
+import { createLiveHelloClaudexSmokeActivities } from './live-claudex-smoke-activities.js';
 
 export interface LiveHelloClaudexSmokeReport {
   workflowType: string;
@@ -33,7 +30,6 @@ export async function runLiveHelloClaudexSmoke(
 ): Promise<LiveHelloClaudexSmokeReport> {
   let workerConnection: NativeConnection | undefined;
   let clientConnection: Connection | undefined;
-  const restoreTurnRuntimeEnv = setClaudexTurnRuntimeEnv(config);
 
   try {
     workerConnection = await NativeConnection.connect({ address: config.address });
@@ -42,7 +38,8 @@ export async function runLiveHelloClaudexSmoke(
     const client = new Client({ connection: clientConnection });
     const worker = await createHelloWorldWorker({
       connection: workerConnection,
-      taskQueue: config.taskQueue
+      taskQueue: config.taskQueue,
+      activities: createLiveHelloClaudexSmokeActivities(config)
     });
     const { started, result } = await worker.runUntil(
       () => startAndAwaitHelloClaudexWorkflow(client, config),
@@ -61,7 +58,6 @@ export async function runLiveHelloClaudexSmoke(
       result
     };
   } finally {
-    restoreTurnRuntimeEnv();
     await clientConnection?.close();
     await workerConnection?.close();
   }
@@ -84,31 +80,4 @@ async function startAndAwaitHelloClaudexWorkflow(
   const result = await handle.result();
 
   return { started, result };
-}
-
-function setClaudexTurnRuntimeEnv(config: LiveHelloClaudexSmokeConfig): () => void {
-  const previousTimeoutMs = process.env[claudexTurnTimeoutEnvName];
-  const previousModel = process.env[claudexTurnModelEnvName];
-
-  process.env[claudexTurnTimeoutEnvName] = String(config.turnTimeoutMs);
-
-  if (config.turnModel !== undefined) {
-    process.env[claudexTurnModelEnvName] = config.turnModel;
-  } else {
-    delete process.env[claudexTurnModelEnvName];
-  }
-
-  return () => {
-    restoreEnvValue(claudexTurnTimeoutEnvName, previousTimeoutMs);
-    restoreEnvValue(claudexTurnModelEnvName, previousModel);
-  };
-}
-
-function restoreEnvValue(name: string, value: string | undefined): void {
-  if (value === undefined) {
-    delete process.env[name];
-    return;
-  }
-
-  process.env[name] = value;
 }

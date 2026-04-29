@@ -7,8 +7,12 @@ import {
   buildLiveHelloClaudexSmokeConfig,
   claudexTurnModelEnvName,
   claudexTurnTimeoutEnvName,
+  type LiveHelloClaudexSmokeConfig,
   defaultLiveClaudexTurnTimeoutMs
 } from '../client/live-claudex-smoke-config.js';
+import { createLiveHelloClaudexSmokeActivities } from '../client/live-claudex-smoke-activities.js';
+import type { RunClaudexTurnActivityContext } from '../activities/run-claudex-turn.js';
+import type { ClaudexTurnRequest, ClaudexTurnResponse } from '../claudex-turn/index.js';
 
 test('live Claudex smoke requires explicit operator opt-in', () => {
   assert.throws(
@@ -85,6 +89,59 @@ test('live Claudex smoke rejects blank model overrides before starting Temporal'
   );
 });
 
+test('live Claudex smoke scopes turn runtime config without mutating process env', async () => {
+  const previousTimeoutMs = process.env[claudexTurnTimeoutEnvName];
+  const previousModel = process.env[claudexTurnModelEnvName];
+  const observed: Array<{ timeoutMs: number | undefined; model: string | undefined }> = [];
+
+  try {
+    process.env[claudexTurnTimeoutEnvName] = '111';
+    process.env[claudexTurnModelEnvName] = 'ambient-model';
+
+    const firstActivities = createLiveHelloClaudexSmokeActivities(
+      buildLiveSmokeConfig({ turnTimeoutMs: 120_000, turnModel: 'gpt-5.1' }),
+      {
+        context: createFakeActivityContext,
+        runner: async (_request, options) => {
+          observed[0] = {
+            timeoutMs: options.timeoutMs,
+            model: options.sessionOptions?.model
+          };
+          return completedResponse;
+        }
+      }
+    );
+    const secondActivities = createLiveHelloClaudexSmokeActivities(
+      buildLiveSmokeConfig({ turnTimeoutMs: 60_000, turnModel: 'gpt-5.3-codex' }),
+      {
+        context: createFakeActivityContext,
+        runner: async (_request, options) => {
+          observed[1] = {
+            timeoutMs: options.timeoutMs,
+            model: options.sessionOptions?.model
+          };
+          return completedResponse;
+        }
+      }
+    );
+
+    await Promise.all([
+      firstActivities.runClaudexTurn(turnRequest),
+      secondActivities.runClaudexTurn(turnRequest)
+    ]);
+
+    assert.deepEqual(observed, [
+      { timeoutMs: 120_000, model: 'gpt-5.1' },
+      { timeoutMs: 60_000, model: 'gpt-5.3-codex' }
+    ]);
+    assert.equal(process.env[claudexTurnTimeoutEnvName], '111');
+    assert.equal(process.env[claudexTurnModelEnvName], 'ambient-model');
+  } finally {
+    restoreEnvValue(claudexTurnTimeoutEnvName, previousTimeoutMs);
+    restoreEnvValue(claudexTurnModelEnvName, previousModel);
+  }
+});
+
 test('npm test does not include the live Claudex smoke command', async () => {
   const packageJson = JSON.parse(await readFile('package.json', 'utf8')) as {
     scripts: Record<string, string>;
@@ -94,3 +151,60 @@ test('npm test does not include the live Claudex smoke command', async () => {
   assert.equal(packageJson.scripts.test, 'npm run test:offline');
   assert.doesNotMatch(packageJson.scripts['test:runner'], /test:live:claudex|LIVE_CLAUDEX_SMOKE/);
 });
+
+function buildLiveSmokeConfig({
+  turnTimeoutMs,
+  turnModel
+}: {
+  turnTimeoutMs: number;
+  turnModel: string;
+}): LiveHelloClaudexSmokeConfig {
+  return {
+    address: 'temporal.example:7233',
+    input: {
+      objective: 'Prove one live path.',
+      provider: 'codex',
+      workingDirectory: '/repo'
+    },
+    taskQueue: `hello-claudex-live-codex-${turnTimeoutMs}`,
+    workflowId: `hello-claudex-live-codex-${turnTimeoutMs}`,
+    turnTimeoutMs,
+    turnModel
+  };
+}
+
+function createFakeActivityContext(): RunClaudexTurnActivityContext {
+  return {
+    info: {},
+    cancellationSignal: new AbortController().signal,
+    heartbeat: () => undefined
+  };
+}
+
+function restoreEnvValue(name: string, value: string | undefined): void {
+  if (value === undefined) {
+    delete process.env[name];
+    return;
+  }
+
+  process.env[name] = value;
+}
+
+const turnRequest: ClaudexTurnRequest = {
+  objective: 'Expose a Temporal activity boundary for Claudex.',
+  provider: 'codex',
+  workingDirectory: '/repo',
+  turnNumber: 1
+};
+
+const completedResponse: ClaudexTurnResponse = {
+  requestedProvider: 'codex',
+  provider: 'codex',
+  outcome: 'completed',
+  text: 'Completed one fake Claudex turn.',
+  artifactRefs: [],
+  sessionRef: {
+    provider: 'codex',
+    sessionId: 'fake-codex-session'
+  }
+};
