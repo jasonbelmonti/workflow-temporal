@@ -105,7 +105,7 @@ Complete
 | --- | --- | --- | --- | --- |
 | CON-1 | Invariant | Temporal workflow state is the source of truth for run status, step cursor, gate state, and resume correlation. | `hello-claudex-mvp.md` establishes workflow-owned durable state. | VAL-2, VAL-5, and VAL-8 verify workflow-owned state and resume behavior. |
 | CON-2 | Constraint | Temporal workflow code must remain deterministic and must not import Claudex, Codex, Claude SDKs, or registry-fetching code that can change during replay. | Temporal runtime constraint and current MVP boundary. | VAL-2 and VAL-7 inspect imports and replay-safe workflow code. |
-| CON-3 | Invariant | Provider session references are resume hints and are not sufficient for correctness. | `hello-claudex-mvp.md` session semantics. | VAL-5 tests resume after missing provider session state by using workflow-owned summaries and artifacts. |
+| CON-3 | Invariant | Provider session references are resume hints and are not sufficient for correctness. | `hello-claudex-mvp.md` session semantics. | VAL-16 tests resume after missing provider session state by using workflow-owned summaries and artifacts. |
 | CON-4 | Constraint | Running workflows must use a recipe snapshot pinned by registry commit, digest, or equivalent immutable identifier. | Prevents nondeterministic execution from live config drift. | VAL-3 verifies pinned recipe snapshot persistence and replay behavior. |
 | CON-5 | Constraint | Mutating steps must run in one explicit git worktree per workflow execution. | Local repo safety and retry containment. | VAL-6 verifies worktree allocation and no cross-run path sharing for mutating profiles. |
 | CON-6 | Constraint | Read-only execution profiles must prevent writes to protected source, registry, and worktree paths while omitting unnecessary write-capable tools and skills. | Required for consensus review and queue triage safety. | VAL-4 and VAL-10 verify negative write attempts fail. |
@@ -198,7 +198,7 @@ Complete
 | FLOW-6 | A registry execution profile is updated while a workflow is running. | The workflow already stored a pinned recipe snapshot. | The running workflow continues with the pinned snapshot and new runs may use the newer execution profile after validation. | REQ-2, REQ-13 |
 | FUNC-1 | Recipe validation is requested. | Registry content is available locally or from an accepted commit. | The caller receives pass/fail validation with specific errors for missing step contracts, execution profile references, gate policies, or schema versions. | REQ-1, REQ-3, REQ-13 |
 | FUNC-2 | Run state is queried. | A workflow execution exists. | The caller receives current run status, active step, gate state, queue item IDs, artifacts, worktree path, and execution profile identifiers. | REQ-11 |
-| FUNC-3 | Queue items are listed. | Queue state exists in Temporal or its durable projection. | The caller receives open, packaged, approved, rejected, cancelled, and resolved item summaries with resume correlation metadata. | REQ-6, REQ-11 |
+| FUNC-3 | Queue items are listed. | Queue state exists in Temporal or its durable projection. | The caller receives open, approved, rejected, cancelled, and resolved item summaries with resume correlation metadata plus any derived review packet references. | REQ-6, REQ-11 |
 | FUNC-4 | A read-only execution profile is applied. | The step declares a read-only execution profile. | The activity runner refuses write-capable tools and rejects protected-path write attempts before they affect the active worktree. | REQ-4, REQ-10 |
 
 Section status:
@@ -207,14 +207,14 @@ Complete
 ## 9. State Model, Faults, and Misuse Cases
 
 States and transitions:
-Recipe state transitions are `draft` -> `validated` -> `published` -> `pinned snapshot` -> `superseded`. Run state transitions are `created` -> `running` -> `waiting_on_gate` -> `running` -> `completed`, `failed`, `cancelled`, or `abandoned`. Step state transitions are `pending` -> `running` -> `completed`, `blocked`, `failed`, or `skipped`. Queue item state transitions are `open` -> `packaged` -> `approved`, `rejected`, `cancelled`, or `resolved`. Review packet state transitions are `draft` -> `presented` -> `superseded`.
+Recipe state transitions are `draft` -> `validated` -> `published` -> `pinned snapshot` -> `superseded`. Run state transitions are `created` -> `running` -> `waiting_on_gate` -> `running` -> `completed`, `failed`, `cancelled`, or `abandoned`. Step state transitions are `pending` -> `running` -> `completed`, `blocked`, `failed`, `cancelled`, or `skipped`. Queue item state transitions are `open` -> `approved`, `rejected`, `cancelled`, or `resolved`; `packaged` is not a queue item state. Review packet state transitions are `draft` -> `presented` -> `superseded`. Triage writes only derived review packet artifacts that reference still-open queue item IDs and never mutates queue item status, gate revision, or workflow state.
 
 | Scenario | Expected behavior | Invariant maintained | Related IDs |
 | --- | --- | --- | --- |
 | Fault-1 | Registry is unavailable after a workflow starts. | The workflow continues using the pinned recipe snapshot or fails only when a new run cannot resolve a recipe. | Running workflows do not depend on live registry reads. | REQ-2, REQ-13, FUNC-1 |
 | Fault-2 | Provider session resume fails. | The activity starts from workflow-owned objective, summary, human inputs, and artifact references. | Provider sessions remain non-authoritative hints. | REQ-12, FLOW-3 |
 | Fault-3 | Approval signal references a stale gate revision. | The workflow rejects the signal and keeps the queue item open or records a stale-decision audit event. | A decision cannot resume the wrong gate state. | REQ-7, FUNC-3 |
-| Fault-4 | Triage packet generation fails halfway. | Queue items remain open or packaged according to the last durable queue state and no workflow resumes. | Triage has no implicit approval power. | REQ-8, FLOW-4 |
+| Fault-4 | Triage packet generation fails halfway. | Queue items remain open, any partial packet artifact is discarded or superseded, and no workflow resumes. | Triage has no implicit approval power. | REQ-8, FLOW-4 |
 | Fault-5 | A mutating step fails after modifying the run worktree. | The run records failure artifacts and keeps changes isolated in the per-run worktree for inspection or cleanup. | Source repo and other runs remain untouched. | REQ-9, REQ-12 |
 | Fault-6 | A non-mutating step fails with a retryable provider or startup error. | The workflow retries according to the pinned retry policy and records each attempt without changing protected paths. | Safe retries are limited to non-mutating execution profiles unless idempotency is explicitly declared. | REQ-12 |
 | Fault-7 | Operator abandons a blocked workflow. | The workflow records `abandoned`, closes the queue item, and rejects later decisions for that gate revision. | Abandoned gates cannot resume after operator intent changes. | REQ-12, FUNC-3 |
@@ -237,7 +237,7 @@ The MVP is local-first. Querying an active run or pending queue should complete 
 | ACC-3 | A fake step returns an approval gate. | A queue item appears with resume target, decision options, context summary, and artifact references. | REQ-6, FLOW-2, FUNC-3 |
 | ACC-4 | A stale approval decision is submitted after a newer gate revision exists. | The decision is rejected and the workflow remains blocked on the current queue item. | REQ-7, Fault-3 |
 | ACC-5 | A consensus review step attempts to write under a protected worktree path while using a read-only execution profile. | The write attempt fails and the worktree contents remain unchanged. | REQ-4, REQ-10, FLOW-5, FUNC-4 |
-| ACC-6 | A triage run packages 50 pending queue items. | Review packets are returned within 5 seconds and no queue item is approved or rejected. | REQ-8, REQ-14, FLOW-4 |
+| ACC-6 | A triage run packages 50 pending queue items. | Review packets are returned within 5 seconds, reference still-open queue item IDs, and no queue item is approved, rejected, or otherwise state-mutated by triage. | REQ-8, REQ-14, FLOW-4 |
 | ACC-7 | A mutating implementation step fails after edits. | The failed run preserves artifacts and worktree changes under the run worktree without touching other worktrees. | REQ-9, REQ-12, Fault-5 |
 | ACC-8 | A provider session reference is unavailable on resume. | The next bounded turn still starts from workflow-owned state and records a new session hint if available. | REQ-12, Fault-2 |
 | ACC-9 | Run state is queried while waiting on a gate. | The query returns active recipe snapshot, step status, queue item ID, gate type, artifacts, and execution profile identifiers. | REQ-11, FUNC-2 |
@@ -378,7 +378,7 @@ Rollout plan:
 Phase 1 defines registry schemas and validation for recipes, step definitions, and `execution-profile` records using fake steps only. Phase 2 adds a new recipe-backed Temporal workflow that runs fake activities, emits queue items, and resumes by decision signal. Phase 3 adds worktree allocation and execution profile enforcement for fake write/read-only steps. Phase 4 adapts the five known skills into typed step definitions. Phase 5 enables read-only queue triage and consensus review packaging. Phase 6 runs live opt-in smoke tests against local provider auth and local worktrees.
 
 Rollback or containment plan:
-Rollback trigger is any failed capability-policy negative test, stale gate resume defect, queue item identity collision, or unintended protected-path write from a read-only execution profile. Rollback action is to disable recipe-backed workflow starts, keep existing `agent.helloClaudex` MVP workflow available, preserve run worktrees for inspection, and revert registry recipe or execution profile publication to the last validated commit. Reversibility is strong for schema additions and workflow type additions because running recipe-backed workflows can be cancelled or abandoned without changing the legacy workflow path.
+Rollback trigger is any failed capability-policy negative test, stale gate resume defect, queue item identity collision, or unintended protected-path write from a read-only execution profile. Rollback action is to disable recipe-backed workflow starts, keep existing `agent.helloClaudex` MVP workflow available, preserve run worktrees for inspection, and revert registry recipe or execution profile publication to the last validated commit. Reversibility is strong for schema additions and workflow type additions because running recipe-backed workflows can be cancelled or abandoned without changing the legacy workflow path. If CND-1 resolves to evolving `agent.helloClaudex` in place, implementation cannot proceed until an equivalent rollback path preserves the last validated bounded-turn workflow behavior.
 
 Operator actions:
 Operators can start a recipe-backed run, query run state, list queue items, generate triage packets, approve or reject queue items, cancel active runs, abandon blocked runs, inspect run artifacts, inspect run worktrees, and disable new recipe-backed starts by removing or pinning the registry execution profile used by the starter.
@@ -406,6 +406,7 @@ Complete
 | VAL-14 | Test | Non-mutating steps retry only according to pinned retry policy, while mutating steps do not auto-retry unless idempotency is explicitly declared. | REQ-12, TECH-3, TECH-5, TECH-6 |
 | VAL-15 | Test | Abandoning a blocked workflow closes the queue item, records `abandoned`, and rejects later decisions for that gate revision. | REQ-12, TECH-8, TECH-9 |
 | VAL-16 | Test | Provider-session loss resumes from workflow-owned objective, summaries, human inputs, and artifact references rather than provider-local session state. | REQ-12, CON-3, TECH-5, TECH-6 |
+| VAL-17 | Rollback drill / Inspection | A failed capability-policy or stale-resume gate blocks launch, recipe-backed starts can be disabled, existing `agent.helloClaudex` behavior remains runnable, failed run worktrees are preserved, and registry recipe or execution profile publication can be reverted to the last validated commit. | HC-4, CND-1 |
 
 | Behavior or requirement | Mechanisms | Verification |
 | --- | --- | --- |
@@ -423,6 +424,7 @@ Complete
 | REQ-12 | TECH-5, TECH-6, TECH-8, TECH-9, TECH-11 | VAL-13, VAL-14, VAL-15, VAL-16 |
 | REQ-13 | TECH-1, TECH-4 | VAL-3, VAL-11 |
 | REQ-14 | TECH-10 | VAL-9 |
+| Rollback control | TECH-1, TECH-3, TECH-4, TECH-5, TECH-11 | VAL-17 |
 | FUNC-1 | TECH-1, TECH-2, TECH-3 | VAL-1, VAL-11 |
 | FUNC-2 | TECH-5, TECH-8, TECH-12 | VAL-7 |
 | FUNC-3 | TECH-8, TECH-9 | VAL-5, VAL-8 |
@@ -469,7 +471,7 @@ Complete
 
 ## Final Consistency Gate
 
-The problem is current and evidenced by the existing hard-coded workflow and the desired five-skill roadmap. Requirements define declarative recipes, pinned snapshots, typed step contracts, execution profile enforcement, queue items, triage packets, worktree isolation, and recovery. Layer 2 defines externally observable start, gate, resume, triage, execution profile, and registry-change behaviors. Layer 3 allocates mechanisms across `agent-config-registry`, `workflow-temporal`, activity runtime, worktree manager, artifact store, and triage packager. Verification covers the highest-risk claims: execution profile enforcement, stale approval rejection, pinned snapshots, cancellation, retry, abandonment, provider-session fallback, worktree isolation, and no hosted dependency.
+The problem is current and evidenced by the existing hard-coded workflow and the desired five-skill roadmap. Requirements define declarative recipes, pinned snapshots, typed step contracts, execution profile enforcement, queue items, triage packets, worktree isolation, and recovery. Layer 2 defines externally observable start, gate, resume, triage, execution profile, and registry-change behaviors. Layer 3 allocates mechanisms across `agent-config-registry`, `workflow-temporal`, activity runtime, worktree manager, artifact store, and triage packager. Verification covers the highest-risk claims: execution profile enforcement, stale approval rejection, pinned snapshots, cancellation, retry, abandonment, provider-session fallback, worktree isolation, rollback, and no hosted dependency.
 
 ## Internal Review Record
 
@@ -487,9 +489,9 @@ The problem is current and evidenced by the existing hard-coded workflow and the
 | Traceability result | Pass after consensus revision |
 | Verdict | Draft is ready for human review; requested decision remains `Approve with heightened controls` |
 | Open findings | none |
-| Resolved findings verified in this decision | ST-1, SM-1, TR-1, CR-1, CR-2, CR-3 |
+| Resolved findings verified in this decision | ST-1, SM-1, TR-1, CR-1, CR-2, CR-3, PR-1, PR-2 |
 | Reviewed waivers | none |
-| Required heightened controls | HC-1, HC-2, HC-3 |
+| Required heightened controls | HC-1, HC-2, HC-3, HC-4 |
 | Approval conditions | CND-1, CND-2 |
 | Top blockers | none |
 | Required follow-ups | Resolve Q-1 and Q-2 before implementation reaches their named phase gates. |
@@ -504,6 +506,8 @@ The problem is current and evidenced by the existing hard-coded workflow and the
 | CR-1 | Major | Resolved | 13, 15, 17 | Consensus review found the runtime enforcement boundary too generic for R3. | Define `ExecutionProfile`, specify fail-closed launch enforcement, read-only bundle behavior, protected-path diff checks, denied capabilities, and negative verification. | Codex |
 | CR-2 | Major | Resolved | 10, 11, 17 | Consensus review found REQ-12 verification coverage incomplete. | Add recovery fault cases, ACC-10 through ACC-12, VAL-13 through VAL-16, and updated traceability for cancellation, retry, abandonment, and provider-session fallback. | Codex |
 | CR-3 | Major | Resolved | 13, 14 | Consensus review found runtime profiles ambiguous relative to existing registry sync profiles. | Rename the capability record to `ExecutionProfile` and define `execution-profile` as a separate non-installable registry record distinct from the existing sync `profile` package kind. | Codex |
+| PR-1 | Major | Resolved | 8, 9, 10 | PR review found queue packaging ambiguous relative to read-only triage and open-item approval. | Remove `packaged` as a queue item state and define review packet packaging as derived artifact metadata that references still-open queue item IDs without mutating workflow state. | Codex |
+| PR-2 | Major | Resolved | 16, 17 | PR review found rollback named as a heightened control without verification coverage. | Add rollback drill verification, rollback traceability, HC-4, and a CND-1 guard for preserving equivalent legacy bounded-turn behavior. | Codex |
 
 ### Heightened Controls
 
@@ -512,6 +516,7 @@ The problem is current and evidenced by the existing hard-coded workflow and the
 | HC-1 | Implementation / Launch | Execution profiles use deny-by-default tool, skill, MCP, approval-authority, and protected-path write policy enforcement. | `agent-config-registry` maintainer and activity runtime owner | VAL-4, VAL-10 |
 | HC-2 | Implementation / Launch | Approval resume requires workflow execution ID, queue item ID, and gate revision match. | `workflow-temporal` maintainer | VAL-5 |
 | HC-3 | Implementation / Launch | Mutating steps require one explicit worktree per run and preserve failed worktrees for inspection. | Activity runtime owner | VAL-6 |
+| HC-4 | Implementation / Launch | Recipe-backed starts must have a tested rollback path: disable new recipe-backed starts, preserve failed worktrees, keep or prove equivalent legacy bounded-turn behavior, and revert registry recipe or execution profile publication to the last validated commit. | `workflow-temporal` maintainer and `agent-config-registry` maintainer | VAL-17 |
 
 ### Approval Conditions
 
