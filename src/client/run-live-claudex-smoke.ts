@@ -3,6 +3,9 @@ import { pathToFileURL } from 'node:url';
 import { temporalAddress } from '../lib/config.js';
 import {
   buildLiveHelloClaudexSmokeConfig,
+  claudexTurnModelEnvName,
+  claudexTurnTimeoutEnvName,
+  defaultLiveClaudexTurnTimeoutMs,
   liveHelloClaudexSmokeTaskQueuePrefix
 } from './live-claudex-smoke-config.js';
 import { runLiveHelloClaudexSmoke } from './live-claudex-smoke.js';
@@ -15,6 +18,8 @@ export async function runLiveHelloClaudexSmokeCli(): Promise<void> {
     temporalAddress: config.address,
     workflowId: config.workflowId,
     taskQueue: config.taskQueue,
+    turnTimeoutMs: config.turnTimeoutMs,
+    turnModel: config.turnModel,
     input: config.input
   }, null, 2));
 
@@ -36,6 +41,8 @@ if (isMainModule()) {
       temporalAddress,
       taskQueuePrefix: liveHelloClaudexSmokeTaskQueuePrefix,
       requestedProvider: 'codex',
+      turnTimeoutMs: process.env[claudexTurnTimeoutEnvName] ?? defaultLiveClaudexTurnTimeoutMs,
+      turnModel: process.env[claudexTurnModelEnvName],
       workingDirectory: process.env.LIVE_CLAUDEX_WORKING_DIRECTORY ?? process.cwd()
     }, null, 2));
     process.exit(1);

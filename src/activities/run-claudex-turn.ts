@@ -2,9 +2,14 @@ import { Context } from '@temporalio/activity';
 
 import {
   runClaudexTurn as runClaudexTurnInNode,
+  type RunClaudexTurnOptions,
   type ClaudexTurnRequest,
   type ClaudexTurnResponse
 } from '../claudex-turn/index.js';
+import {
+  readClaudexTurnSessionOptions,
+  readClaudexTurnTimeoutMs
+} from '../claudex-turn/turn-runtime-config.js';
 import {
   createRunClaudexTurnHeartbeater,
   type RunClaudexTurnHeartbeatContext
@@ -21,13 +26,18 @@ export interface RunClaudexTurnActivityContext extends RunClaudexTurnHeartbeatCo
 
 export type RunClaudexTurnActivityRunner = (
   request: ClaudexTurnRequest,
-  options: { signal: AbortSignal }
+  options: {
+    signal: AbortSignal;
+    timeoutMs?: number;
+    sessionOptions?: RunClaudexTurnOptions['sessionOptions'];
+  }
 ) => Promise<ClaudexTurnResponse>;
 
 export interface RunClaudexTurnActivityOptions {
   context: RunClaudexTurnActivityContext;
   runner?: RunClaudexTurnActivityRunner;
   heartbeatIntervalMs?: number;
+  env?: NodeJS.ProcessEnv;
 }
 
 /**
@@ -50,15 +60,21 @@ export async function runClaudexTurnWithActivityContext(
   {
     context,
     runner = runClaudexTurnInNode,
-    heartbeatIntervalMs
+    heartbeatIntervalMs,
+    env = process.env
   }: RunClaudexTurnActivityOptions
 ): Promise<ClaudexTurnResponse> {
   const heartbeater = createRunClaudexTurnHeartbeater(context, request, heartbeatIntervalMs);
-  heartbeater.started();
 
   try {
+    const timeoutMs = readClaudexTurnTimeoutMs(env);
+    const sessionOptions = readClaudexTurnSessionOptions(env);
+    heartbeater.started();
+
     const response = await runner(request, {
-      signal: context.cancellationSignal
+      signal: context.cancellationSignal,
+      timeoutMs,
+      sessionOptions
     });
 
     heartbeater.finished(response);

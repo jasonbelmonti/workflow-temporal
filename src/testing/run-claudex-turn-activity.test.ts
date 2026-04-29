@@ -11,6 +11,10 @@ import {
   type ClaudexTurnRequest,
   type ClaudexTurnResponse
 } from '../claudex-turn/index.js';
+import {
+  claudexTurnModelEnvName,
+  claudexTurnTimeoutEnvName
+} from '../claudex-turn/turn-runtime-config.js';
 
 const turnRequest: ClaudexTurnRequest = {
   objective: 'Expose a Temporal activity boundary for Claudex.',
@@ -34,6 +38,68 @@ test('Claudex turn activity passes Temporal cancellation signal into the runner'
   });
 
   assert.equal(observedSignal, abortController.signal);
+});
+
+test('Claudex turn activity passes configured runner timeout into the runner', async () => {
+  let observedTimeoutMs: number | undefined;
+  let observedModel: string | undefined;
+
+  await runClaudexTurnWithActivityContext(turnRequest, {
+    context: createFakeActivityContext({}),
+    env: {
+      [claudexTurnTimeoutEnvName]: '90000',
+      [claudexTurnModelEnvName]: 'gpt-5.1'
+    },
+    runner: async (_request, options) => {
+      observedTimeoutMs = options.timeoutMs;
+      observedModel = options.sessionOptions?.model;
+      return completedResponse;
+    }
+  });
+
+  assert.equal(observedTimeoutMs, 90_000);
+  assert.equal(observedModel, 'gpt-5.1');
+});
+
+test('Claudex turn activity leaves runner timeout unset without configuration', async () => {
+  let observedTimeoutMs: number | undefined;
+  let observedSessionOptions: unknown;
+
+  await runClaudexTurnWithActivityContext(turnRequest, {
+    context: createFakeActivityContext({}),
+    env: {},
+    runner: async (_request, options) => {
+      observedTimeoutMs = options.timeoutMs;
+      observedSessionOptions = options.sessionOptions;
+      return completedResponse;
+    }
+  });
+
+  assert.equal(observedTimeoutMs, undefined);
+  assert.equal(observedSessionOptions, undefined);
+});
+
+test('Claudex turn activity stops heartbeats when runtime config is invalid', async () => {
+  const heartbeats: RunClaudexTurnHeartbeatDetails[] = [];
+
+  await assert.rejects(
+    runClaudexTurnWithActivityContext(turnRequest, {
+      context: createFakeActivityContext({
+        heartbeatTimeoutMs: 1_000,
+        heartbeats
+      }),
+      heartbeatIntervalMs: 5,
+      env: {
+        [claudexTurnTimeoutEnvName]: '0'
+      },
+      runner: async () => completedResponse
+    }),
+    /CLAUDEX_TURN_TIMEOUT_MS must be a positive integer/
+  );
+  await delay(25);
+
+  assert.equal(heartbeats[0]?.phase, 'failed');
+  assert.equal(heartbeats.some((heartbeat) => heartbeat.phase === 'running'), false);
 });
 
 test('Claudex turn activity emits configured heartbeat diagnostics while the turn is running', async () => {
