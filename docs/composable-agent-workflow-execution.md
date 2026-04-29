@@ -123,9 +123,10 @@ Complete.
 | CON-3 | Constraint | Running workflows shall use immutable recipe snapshots pinned by registry commit, digest, or equivalent snapshot ID. | Workflow implementation agent | No | VAL-3 verifies running workflows ignore later registry changes. |
 | CON-4 | Constraint | Runtime `execution-profile` records shall be distinct from existing registry sync `profile` records. | Registry implementation agent | Yes | DP-3 and VAL-4 verify the distinction before recipes reference execution profiles. |
 | CON-5 | Constraint | Read-only execution profiles shall deny write-capable tools, worker-agent delegation, mutation-capable MCP tools, approval-signal authority, and protected-path writes. | Capability-policy reviewer | No | VAL-7 and VAL-9 run negative enforcement tests. |
-| CON-6 | Constraint | Mutating steps shall run in one explicit run worktree and shall not share active mutable paths across workflow runs. | Workflow implementation agent | No | VAL-7 verifies allocation, labels, and failed-run preservation. |
+| CON-6 | Constraint | Mutating steps shall run in one explicit run worktree and shall not share active mutable paths across workflow runs. | Workflow implementation agent | No | VAL-7 and VAL-10 verify allocation, labels, and failed-run preservation. |
 | CON-7 | Constraint | Queue triage may create derived review-packet artifacts but shall not approve, reject, cancel, abandon, or otherwise mutate workflow gate state. | Workflow implementation agent | No | VAL-9 verifies no queue-state mutation during triage. |
 | CON-8 | Constraint | Linear tasks created for this execution shall use the repository-required headings: Objective, Context / Constraints, Materially verifiable success criteria, and Execution notes. | Codex implementation agent | No | REV-1 inspects Linear task hygiene before implementation starts. |
+| CON-9 | Constraint | Non-mutating steps may retry only according to pinned retry policy; mutating steps shall not auto-retry unless explicit idempotency is declared. | Workflow implementation reviewer | No | VAL-14 verifies retry policy and mutating retry denial. |
 | ASM-1 | Assumption | Fake steps can prove recipe, queue, and resume semantics before real skills are adapted. | Workflow implementation agent | No | VAL-1 proves the fake recipe critical path before WP-2 expands breadth. |
 | ASM-2 | Assumption | The registry can add workflow-specific package kinds or catalog record types without breaking existing skill, agent-instruction, or sync-profile behavior. | Registry implementation agent | No | VAL-4 runs compatibility tests across old and new records. |
 | ASM-3 | Assumption | Initial queue storage can live in Temporal workflow state and queries, with a derived local index added only if triage latency requires it. | Workflow implementation agent | No | Q-2 resolves during WP-3 with a 50-item seed measurement. |
@@ -157,7 +158,7 @@ Sequencing principle:
 Execution shall retire the highest-risk claims before broad implementation: prove recipe/gate/resume semantics with fake steps first, harden registry contracts second, enforce capability and worktree containment before real skills, and add triage/live smoke only after queue and profile negative tests pass.
 
 Validation cadence:
-Every work package shall produce focused tests and an evidence note under `docs/evidence/composable-agent-workflow/`. Integration validation runs at each milestone. Negative tests for stale decisions, read-only writes, disallowed tools, and protected-path changes are mandatory before live or mutating adapter work.
+Every work package shall produce focused tests and an evidence note under `docs/evidence/composable-agent-workflow/`. Integration validation runs at each milestone. Negative tests for stale decisions, retry-policy violations, read-only writes, disallowed tools, and protected-path changes are mandatory before live or mutating adapter work.
 
 Deferred completeness:
 Hosted UI, public workflow marketplace, full multi-user permissions, provider-agnostic live smoke beyond Codex, advanced queue prioritization heuristics, and reusable cross-repository package publication are deferred until after the MVP proves the local control-plane path.
@@ -166,7 +167,7 @@ Primary risks and unknowns:
 
 | ID | Risk or unknown | Why it matters | Owner | Evidence required to retire | Decision gate |
 | --- | --- | --- | --- | --- | --- |
-| RISK-1 | Execution-profile enforcement could be incomplete. | Read-only review and triage steps become unsafe if prompts are the only control. | Capability-policy reviewer | VAL-7 and VAL-9 negative tests, plus REV-4 approval. | MS-3 |
+| RISK-1 | Execution-profile enforcement could be incomplete. | Read-only review and triage steps become unsafe if prompts are the only control. | Capability-policy reviewer | VAL-7 before MS-3, VAL-9 before MS-4, plus REV-4 approval. | MS-3, MS-4 |
 | RISK-2 | Queue item identity or resume correlation could be wrong. | A human approval could resume the wrong workflow, step, or stale gate. | Workflow implementation agent | VAL-1 and VAL-6 stale/wrong-run decision tests. | MS-1, MS-3 |
 | RISK-3 | Recipes could become prompt-shaped blobs. | Composition, validation, triage, and downstream step execution require typed contracts. | Registry implementation agent | VAL-2 and VAL-4 reject prompt-only recipe and missing contract records. | MS-2 |
 | RISK-4 | Registry baseline is still in active MS-1 implementation. | Workflow-specific registry records may conflict with validation/catalog changes in progress. | Registry contract reviewer | DP-3, REV-2, and compatibility evidence from VAL-4. | MS-2 |
@@ -500,7 +501,7 @@ Own runtime execution-profile enforcement, worktree allocation, read-only bundle
 Value / risk trace:
 - Observable value enabled: mutating work is contained and read-only work cannot mutate protected paths.
 - Risk retired: RISK-1.
-- Validation evidence: VAL-7, VAL-9, EVD-7, EVD-9.
+- Validation evidence: VAL-7, EVD-7.
 - Blocking unknowns: none after DP-3.
 
 Owns:
@@ -556,7 +557,7 @@ Own queue listing, triage packet generation, operator decision helpers, and runb
 Value / risk trace:
 - Observable value enabled: pending human approvals can be reviewed efficiently without implicit approval.
 - Risk retired: RISK-1, RISK-2, Q-2.
-- Validation evidence: VAL-9, VAL-10, EVD-9, EVD-11.
+- Validation evidence: VAL-9, EVD-9.
 - Blocking unknowns: Q-2.
 
 Owns:
@@ -655,10 +656,10 @@ Hosted UI, provider breadth beyond Codex, advanced heuristics, public reusable p
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | WP-1 | Implement fake recipe-to-gate proving slice. | Workflow implementation agent with registry reviewer support | PKG-1, PKG-3, PKG-4, PKG-5 | Narrow fixture/contracts/resolver/workflow/test paths in both repos | Existing `hello-claudex` code, registry docs | `SRC-1`, `SRC-2`, fake recipe fixture | Fake recipe starts, emits queue item, rejects stale decision, resumes matching decision, completes | DEP-1, DEP-2, Q-1 decision | Proves critical recipe/gate/resume path before broad work | RISK-2, RISK-3 | MS-1 | VAL-1 | Automated fake vertical-slice tests pass and manual state inspection approves evidence. |
 | WP-2 | Harden registry workflow records and compatibility. | Registry implementation agent | PKG-1, PKG-2 | `agent-config-registry` contracts, schemas, validation/catalog tests | `workflow-temporal` design and resolver tests | WP-1 fixture, registry MS-1 baseline | Validated recipe, step definition, execution-profile records and catalog metadata | DEP-3, DP-3 | Registry rejects invalid or prompt-only recipes | RISK-3, RISK-4 | MS-2 | VAL-2, VAL-4 | Existing registry tests remain green; new workflow validation tests pass; reviewer approves compatibility. |
-| WP-3 | Build durable Temporal recipe workflow and approval queue semantics. | Workflow implementation agent | PKG-3, PKG-4 | `workflow-temporal/src/workflows/**`, workflow tests | Registry validation modules, activity runner internals | WP-1 and WP-2 contracts | Production-shaped recipe workflow state, queue item query, decision signals, cancel/abandon semantics | MS-1, Q-1 | Queue state becomes durable and inspectable | RISK-2 | MS-3 | VAL-3, VAL-5, VAL-6, VAL-13 | Workflow bundle tests cover pinned snapshot, stale decisions, cancel, abandon, provider-session loss, and query state. |
-| WP-4 | Implement execution-profile enforcement and worktree/artifact containment. | Capability-policy implementation agent | PKG-6 | Enforcement, worktree, artifact modules and tests | Workflow queue contracts, registry profile contracts | WP-2 execution-profile schema; WP-3 state | Fail-closed execution context, run worktree allocation, read-only bundle, protected-path diff checks | MS-2 | Read-only and mutating execution profiles have enforceable runtime boundaries | RISK-1 | MS-3 | VAL-7, VAL-9 | Negative tests prove protected writes, disallowed tools, and approval authority fail. |
-| WP-5 | Adapt the five known happy-path skills and consensus review shape. | Step adapter implementation agent | PKG-5, PKG-6 | Step adapter modules, fixtures, adapter tests | Skill source docs, registry contracts, workflow state | Approved profile enforcement and typed step contracts | Typed adapters for `linear-next-task`, `handoff-prompt`, `code-simplifier`, `organize-code-boundaries`, and `consensus-review`; fake fallbacks | MS-3 | Recipe can represent and execute the intended workflow path | RISK-3 | MS-4 | VAL-8 | Adapter tests show typed inputs/outputs and consensus review uses read-only profile. |
-| WP-6 | Implement queue triage and operator surfaces. | Operator tooling implementation agent | PKG-7 | Queue client, triage packet, docs, tests | Workflow queue contracts, enforcement modules | WP-3 queue state and WP-4 read-only profile | Queue listing, review packets, 50-item measurement, runbook updates | MS-3, Q-2 | Operator can triage pending decisions without implicit approval | RISK-1, RISK-2, Q-2 | MS-4 | VAL-9, VAL-10 | Triage packet generation is measured, read-only, and manually approved. |
+| WP-3 | Build durable Temporal recipe workflow and approval queue semantics. | Workflow implementation agent | PKG-3, PKG-4 | `workflow-temporal/src/workflows/**`, workflow tests | Registry validation modules, activity runner internals | WP-1 and WP-2 contracts | Production-shaped recipe workflow state, queue item query, decision signals, retry policy, cancel/abandon semantics | MS-1, Q-1, DEP-4 | Queue state becomes durable and inspectable | RISK-2 | MS-3 | VAL-3, VAL-5, VAL-6, VAL-13, VAL-14 | Workflow bundle tests cover pinned snapshot, retry policy, stale decisions, cancel, abandon, provider-session loss, and query state. |
+| WP-4 | Implement execution-profile enforcement and worktree/artifact containment. | Capability-policy implementation agent | PKG-6 | Enforcement, worktree, artifact modules and tests | Workflow queue contracts, registry profile contracts | WP-2 execution-profile schema; WP-3 state | Fail-closed execution context, run worktree allocation, read-only bundle, protected-path diff checks | MS-2 | Read-only and mutating execution profiles have enforceable runtime boundaries | RISK-1 | MS-3 | VAL-7 | Negative tests prove protected writes, disallowed tools, and approval authority fail. |
+| WP-5 | Adapt the five known happy-path skills and consensus review shape. | Step adapter implementation agent | PKG-5, PKG-6 | Step adapter modules, fixtures, adapter tests | Skill source docs, registry contracts, workflow state | Approved profile enforcement and typed step contracts | Typed adapters for `linear-next-task`, `handoff-prompt`, `code-simplifier`, `organize-code-boundaries`, and `consensus-review`; fake fallbacks | MS-3, Q-4 | Recipe can represent and execute the intended workflow path | RISK-3 | MS-4 | VAL-8 | Adapter tests show typed inputs/outputs and consensus review uses read-only profile. |
+| WP-6 | Implement queue triage and operator surfaces. | Operator tooling implementation agent | PKG-7 | Queue client, triage packet, docs, tests | Workflow queue contracts, enforcement modules | WP-3 queue state and WP-4 read-only profile | Queue listing, review packets, 50-item measurement, runbook updates | MS-3, Q-2 | Operator can triage pending decisions without implicit approval | RISK-1, RISK-2, Q-2 | MS-4 | VAL-9 | Triage packet generation is measured, read-only, and manually approved. |
 | WP-7 | Complete live opt-in smoke, rollback, Linear handoff, and final evidence. | Codex implementation agent and operator | PKG-3 through PKG-7 | Docs, evidence, smoke scripts, Linear updates | All implementation surfaces | WP-1 through WP-6 | Final evidence bundle, rollback drill, live opt-in smoke result, handoff record | MS-4 | MVP is activation-ready or explicitly blocked with evidence | RISK-1, RISK-2 | MS-5 | VAL-10, VAL-11, VAL-12 | Final gate evidence exists and Jason approves or rejects activation. |
 
 Execution sequence:
@@ -666,7 +667,7 @@ Execution sequence:
 2. Execute WP-1 as the first proving slice.
 3. Execute WP-2 and WP-3 after MS-1; WP-2 must stabilize registry contracts before WP-3 locks workflow snapshot shapes.
 4. Execute WP-4 before any real skill adapter receives write-capable tools.
-5. Execute WP-5 and WP-6 after MS-3. They may proceed in parallel only if they do not share editable paths and use approved queue/profile contracts.
+5. Execute WP-5 after MS-3 and Q-4; execute WP-6 after MS-3 and Q-2. They may proceed in parallel only if they do not share editable paths and use approved queue/profile contracts.
 6. Execute WP-7 after MS-4.
 
 Parallelization rules:
@@ -687,8 +688,8 @@ Complete.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | MS-1 | Approve fake recipe critical path. | OBJ-1, OBJ-3, OBJ-4, WP-1, PKG-1, PKG-3, PKG-4, PKG-5 | Before WP-2 or WP-3 expands implementation | Jason Belmonti | VAL-1, EVD-1 | REV-1, REV-3 | EVD-1 | Approve / Reject / Conditional approval | Stop; revise recipe/gate model before broad implementation. |
 | MS-2 | Approve registry workflow contracts. | OBJ-2, WP-2, PKG-1, PKG-2, SURF-1, SURF-2 | Before WP-4 and before real adapters reference execution profiles | Registry contract reviewer | VAL-2, VAL-4, EVD-2, EVD-4 | REV-2 | EVD-2, EVD-4 | Approve / Reject / Conditional approval | Stop registry integration; revise package-kind and schema strategy. |
-| MS-3 | Approve queue safety and capability containment. | OBJ-3, OBJ-4, OBJ-5, OBJ-6, WP-3, WP-4, PKG-4, PKG-6 | Before WP-5 real skill adapters or WP-6 triage | Jason Belmonti and capability-policy reviewer | VAL-5, VAL-6, VAL-7, VAL-9, VAL-13, EVD-5, EVD-6, EVD-7, EVD-9, EVD-13 | REV-3, REV-4, REV-5 | EVD-5, EVD-6, EVD-7, EVD-9, EVD-13 | Approve / Reject / Conditional approval | Disable recipe-backed starts; keep fake slice only until defects are resolved. |
-| MS-4 | Approve adapter and triage usability. | OBJ-1, OBJ-5, OBJ-7, WP-5, WP-6, PKG-5, PKG-7 | Before live opt-in smoke or final readiness | Jason Belmonti | VAL-8, VAL-9, VAL-10, EVD-8, EVD-9, EVD-11 | REV-4, REV-6 | EVD-8, EVD-9, EVD-11 | Approve / Reject / Conditional approval | Remove real adapters from activation path; continue with fake recipe evidence only. |
+| MS-3 | Approve queue safety and capability containment. | OBJ-3, OBJ-4, OBJ-5, OBJ-6, WP-3, WP-4, PKG-4, PKG-6 | Before WP-5 real skill adapters or WP-6 triage | Jason Belmonti and capability-policy reviewer | VAL-5, VAL-6, VAL-7, VAL-13, VAL-14, EVD-5, EVD-6, EVD-7, EVD-13, EVD-14 | REV-3, REV-4, REV-5 | EVD-5, EVD-6, EVD-7, EVD-13, EVD-14 | Approve / Reject / Conditional approval | Disable recipe-backed starts; keep fake slice only until defects are resolved. |
+| MS-4 | Approve adapter and triage usability. | OBJ-1, OBJ-5, OBJ-7, WP-5, WP-6, PKG-5, PKG-7 | Before live opt-in smoke or final readiness | Jason Belmonti | VAL-8, VAL-9, EVD-8, EVD-9 | REV-4 | EVD-8, EVD-9 | Approve / Reject / Conditional approval | Remove real adapters from activation path; continue with fake recipe evidence only. |
 | MS-5 | Approve MVP activation or rejection. | All objectives, WP-7, rollout, rollback, handoff | Before completion | Jason Belmonti | VAL-10, VAL-11, VAL-12, EVD-10, EVD-11, EVD-12 | REV-6 | EVD-10, EVD-11, EVD-12, handoff record | Approve / Reject / Conditional approval | Mark Not ready; keep recipe-backed starts disabled and preserve evidence. |
 
 Manual verification guide:
@@ -702,8 +703,9 @@ Manual verification guide:
 | MV-5 | MS-3 | Run read-only protected-path negative tests. | Write attempts fail before protected source, registry, or worktree paths change. | EVD-7 |
 | MV-6 | MS-3 | Run cancel/abandon/stale decision cases. | Queue item and workflow states transition as specified; later decisions are rejected. | EVD-5, EVD-6 |
 | MV-6A | MS-3 | Simulate provider-session loss before a resume attempt. | The workflow resumes from workflow-owned objective, summaries, human input, and artifact refs; prior provider session refs are treated only as hints and a new session hint is recorded when available. | EVD-13 |
+| MV-6B | MS-3 | Run retry-policy cases for mutating and non-mutating steps. | Non-mutating steps retry according to the pinned policy; mutating steps do not auto-retry unless explicit idempotency is declared. | EVD-14 |
 | MV-7A | MS-4 | Inspect or run the five happy-path step adapter evidence. | Each adapter exposes typed input, output, artifact, and gate contracts; `consensus-review` is bound to a read-only execution profile. | EVD-8, EVD-9 |
-| MV-7 | MS-4 | Generate a triage packet from seed queue items. | Packet references still-open queue item IDs and does not approve, reject, cancel, or abandon any gate. | EVD-11 |
+| MV-7 | MS-4 | Generate a triage packet from seed queue items. | Packet references still-open queue item IDs and does not approve, reject, cancel, or abandon any gate. | EVD-9 |
 | MV-8 | MS-5 | Execute rollback drill. | New recipe-backed starts can be disabled, existing `agent.helloClaudex` or approved equivalent remains runnable, and failed worktrees/artifacts are preserved. | EVD-10, EVD-12 |
 | MV-8A | MS-5 | Run the live opt-in smoke path under approved execution profiles. | The Codex-backed recipe path completes or reaches a documented gate without requesting broader permissions, and smoke logs identify the recipe snapshot and execution profile IDs. | EVD-12 |
 | MV-8B | MS-5 | Review the final handoff and operator documentation. | Handoff includes start, query, list queue, decide, triage, cancel, abandon, rollback, disable-starts commands, Linear links, evidence paths, and known limitations. | EVD-11, handoff record |
@@ -738,7 +740,7 @@ Complete.
 | --- | --- | --- | --- | --- |
 | Add registry `workflow-recipe` records. | New configuration contract for ordered or branched workflow steps. | Existing registry package kinds must continue to validate and catalog unchanged. | Reversible by removing records and disabling recipe-backed starts. | VAL-2, VAL-4 |
 | Add registry `step-definition` records. | Defines typed input, output, artifact, and gate contracts for recipe steps. | Existing skills are referenced by adapters; skill package content does not need immediate rewrite. | Reversible by removing step records and adapters. | VAL-2, VAL-8 |
-| Add runtime `execution-profile` records. | Adds capability policy for tools, skills, MCP, approval authority, retry class, and filesystem policy. | Must be distinct from current sync `profile` package kind. | Reversible by disabling recipe-backed starts and removing records. | VAL-4, VAL-7 |
+| Add runtime `execution-profile` records. | Adds capability policy for tools, skills, MCP, approval authority, retry class, and filesystem policy. | Must be distinct from current sync `profile` package kind. | Reversible by disabling recipe-backed starts and removing records. | VAL-4, VAL-7, VAL-14 |
 | Add recipe snapshot to workflow start/state. | New recipe-backed workflow start contract and query state. | Existing `agent.helloClaudex` remains compatible unless deviation approved. | Reversible by disabling new workflow type. | VAL-3, VAL-5 |
 | Add approval queue item and decision signal contracts. | Enables durable gate listing and resume by queue item plus gate revision. | Version queue item payloads to protect long-running workflows. | Reversible for new runs; existing blocked runs can be cancelled or abandoned. | VAL-6 |
 | Add run worktree and artifact metadata. | Records run-owned mutable path, read-only bundle path, and artifact refs. | Existing turn artifact refs can be extended without removing old fields. | Reversible by preserving artifacts and disabling worktree allocation for new recipe runs. | VAL-7, VAL-10 |
@@ -765,11 +767,12 @@ Complete.
 | VAL-6 | Test | Decision signals validate workflow execution ID, queue item ID, gate revision, status, and terminal/abandoned cases. | Pre-merge for WP-3 | Workflow implementation agent | EVD-6 |
 | VAL-7 | Negative test / Security review | Execution-profile enforcement blocks disallowed tools, MCP access, approval authority, and protected-path writes. | Pre-merge for WP-4 | Capability-policy reviewer | EVD-7 |
 | VAL-8 | Test | Five happy-path step adapters use typed input/output/gate contracts and preserve artifact refs. | Pre-release | Step adapter implementation agent | EVD-8 |
-| VAL-9 | Negative test / Measurement | Triage and consensus read-only profiles cannot mutate protected paths or queue state; 50 pending items package within the agreed local threshold. | Pre-release | Operator tooling agent | EVD-9 |
+| VAL-9 | Negative test / Measurement | Triage and consensus read-only profiles cannot mutate protected paths or queue state; 50 pending items package within 5 seconds on the local development machine. | Pre-release for WP-6 | Operator tooling agent | EVD-9 |
 | VAL-10 | Manual / Inspection | Worktree allocation is one run to one mutable worktree, failed worktrees are preserved, and cleanup is explicit. | Pre-release | Workflow operator | EVD-10 |
 | VAL-11 | Manual / Review | Operator docs and Linear handoff show how to start, inspect, approve, reject, abandon, triage, and roll back recipe-backed runs. | Pre-completion | Codex implementation agent | EVD-11 |
 | VAL-12 | Live opt-in smoke / Rollback drill | One Codex-backed opt-in recipe path runs under approved profiles, and recipe-backed starts can be disabled while preserving legacy/equivalent behavior. | Pre-completion | Workflow operator | EVD-12 |
 | VAL-13 | Test / Fault injection | Provider-session loss resumes from workflow-owned objective, summaries, human inputs, and artifact refs rather than provider-local session state; a new provider session hint is recorded when available. | Pre-merge for WP-3; repeat before live smoke if adapter behavior changes | Workflow implementation agent | EVD-13 |
+| VAL-14 | Test | Non-mutating steps retry only according to pinned retry policy, while mutating steps do not auto-retry unless idempotency is explicitly declared. | Pre-merge for WP-3 | Workflow implementation agent | EVD-14 |
 
 Section status:
 Complete.
@@ -780,9 +783,9 @@ Complete.
 | --- | --- | --- | --- | --- |
 | REV-1 | Jason Belmonti | Source authority, Linear project/ticket structure, Q-1 decision, Q-3 decision, required task headings, and entry readiness. | Yes | VAL-0 approval and EVD-0. |
 | REV-2 | Registry contract reviewer | Registry contracts, schema compatibility, validation, catalog, digest, and runtime `execution-profile` distinction. | Yes | MS-2 approval with EVD-2 and EVD-4. |
-| REV-3 | Workflow implementation reviewer | Temporal determinism, recipe snapshot use, workflow imports, queue state, provider-session fallback, and compiled bundle behavior. | Yes | MS-1/MS-3 approval with EVD-1, EVD-3, EVD-5, EVD-13. |
+| REV-3 | Workflow implementation reviewer | Temporal determinism, recipe snapshot use, workflow imports, queue state, retry policy, provider-session fallback, and compiled bundle behavior. | Yes | MS-1/MS-3 approval with EVD-1, EVD-3, EVD-5, EVD-13, EVD-14. |
 | REV-4 | Independent capability-policy reviewer | Execution-profile enforcement, read-only containment, protected-path checks, tool/MCP/skill authority, and approval authority. | Yes | MS-3/MS-4 approval with EVD-7 and EVD-9. |
-| REV-5 | Workflow implementation reviewer | Queue item identity, stale decisions, cancel/abandon behavior, provider-session fallback, recovery, and artifact references. | Yes | EVD-6 and EVD-13 approval. |
+| REV-5 | Workflow implementation reviewer | Queue item identity, stale decisions, retry behavior, cancel/abandon behavior, provider-session fallback, recovery, and artifact references. | Yes | EVD-6, EVD-13, and EVD-14 approval. |
 | REV-6 | Jason Belmonti and operator reviewer | Operator docs, live smoke evidence, rollback drill, Linear handoff, and final readiness. | Yes | MS-5 approval with EVD-10 through EVD-12. |
 
 Approval conditions:
@@ -797,8 +800,8 @@ Complete.
 | --- | --- | --- | --- | --- | --- |
 | REL-1 | Land recipe-backed workflow as a new workflow path or feature-gated starter without removing `agent.helloClaudex`. | WP-3 | Workflow implementation agent | Compiled bundle failure or nondeterministic import. | EVD-5 |
 | REL-2 | Enable fake recipe runs only after MS-1 approval. | After WP-1 | Workflow operator | Stale decision accepted or queue query missing required fields. | EVD-1 |
-| REL-3 | Enable real skill adapters only after MS-3 approval. | After WP-4 | Capability-policy reviewer | Read-only protected-path negative test fails. | EVD-7, EVD-9 |
-| REL-4 | Enable queue triage only after MS-4 approval. | After WP-6 | Workflow operator | Triage mutates queue state or exceeds agreed local threshold. | EVD-9, EVD-11 |
+| REL-3 | Enable real skill adapters only after MS-3 approval and Q-4 resolution. | After WP-4 | Capability-policy reviewer | Read-only protected-path negative test fails or typed adapter contracts are unresolved. | EVD-7 |
+| REL-4 | Enable queue triage only after MS-4 approval. | After WP-6 | Workflow operator | Triage mutates queue state or fails the 50-item-within-5-seconds local measurement. | EVD-9 |
 | REL-5 | Run live Codex opt-in smoke and rollback drill before completion. | WP-7 | Workflow operator | Live run requests broader permissions or rollback cannot disable new starts. | EVD-12 |
 
 Rollback or containment plan:
@@ -877,15 +880,16 @@ Complete.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | SRC-1 / OBJ-1 / Critical path | SURF-1, SURF-3, SURF-4 | PKG-1, PKG-3, PKG-4, PKG-5 | WP-1, WP-3, WP-5 | MS-1, MS-4 | CTRL-1, CTRL-2 | VAL-1, VAL-3, VAL-8 | REV-1, REV-3 | REL-1, OBS-1 | EVD-1, EVD-3, EVD-8 |
 | SRC-5 / OBJ-2 / Typed registry contracts | SURF-1, SURF-2 | PKG-1, PKG-2 | WP-2 | MS-2 | CTRL-5 | VAL-2, VAL-4 | REV-2 | REL-2 | EVD-2, EVD-4 |
-| OBJ-3 / Durable queue items | SURF-3, SURF-6 | PKG-4, PKG-7 | WP-1, WP-3, WP-6 | MS-1, MS-3, MS-4 | CTRL-6 | VAL-1, VAL-6, VAL-9 | REV-5, REV-6 | OBS-1, OBS-2 | EVD-1, EVD-6, EVD-9 |
+| OBJ-3 / Durable queue items | SURF-3, SURF-6 | PKG-4 | WP-1, WP-3 | MS-1, MS-3 | CTRL-6 | VAL-1, VAL-6 | REV-5 | OBS-1, OBS-2 | EVD-1, EVD-6 |
 | OBJ-4 / Safe resume | SURF-3 | PKG-4 | WP-1, WP-3 | MS-1, MS-3 | CTRL-6 | VAL-1, VAL-6, VAL-13 | REV-3, REV-5 | OBS-3 | EVD-1, EVD-6, EVD-13 |
 | OBJ-5 / Execution-profile enforcement | SURF-4, SURF-5 | PKG-6 | WP-4, WP-5 | MS-3, MS-4 | CTRL-3, CTRL-7 | VAL-7, VAL-9 | REV-4 | REL-3, OBS-4 | EVD-7, EVD-9 |
 | OBJ-6 / Worktree containment | SURF-5 | PKG-6 | WP-4, WP-7 | MS-3, MS-5 | CTRL-3 | VAL-7, VAL-10, VAL-12 | REV-4, REV-6 | REL-5, OBS-5 | EVD-7, EVD-10, EVD-12 |
-| OBJ-7 / Triage packets | SURF-6, SURF-8 | PKG-7 | WP-6, WP-7 | MS-4, MS-5 | CTRL-3, CTRL-6 | VAL-9, VAL-10, VAL-11 | REV-6 | REL-4, OBS-6 | EVD-9, EVD-11 |
+| OBJ-7 / Triage packets | SURF-6, SURF-8 | PKG-7 | WP-6 | MS-4 | CTRL-3, CTRL-6 | VAL-9 | REV-4 | REL-4, OBS-6 | EVD-9 |
 | SRC-4 / SRC-6 / PM readiness | SURF-9 | N/A with PM rationale | WP-7 | Entry gate, MS-5 | CTRL-1, CTRL-6 | VAL-0, VAL-11 | REV-1, REV-6 | OBS-7 | EVD-0, EVD-11 |
 | SRC-2 / SRC-3 / NG-2 / Provider-session non-authority | SURF-3, SURF-4, SURF-10 | PKG-3, PKG-4, PKG-5 | WP-1, WP-3, WP-5 | MS-1, MS-3, MS-4 | CTRL-2, CTRL-6 | VAL-5, VAL-8, VAL-13 | REV-3, REV-5 | REL-1, OBS-1, OBS-3 | EVD-5, EVD-8, EVD-13 |
+| SRC-3 / REQ-12 / Retry-policy recovery | SURF-3, SURF-4, SURF-5 | PKG-3, PKG-4, PKG-6 | WP-3, WP-4 | MS-3 | CTRL-2, CTRL-3, CTRL-6 | VAL-14 | REV-3, REV-5 | OBS-3, OBS-4 | EVD-14 |
 | SRC-7 / Requested execution-spec artifact | SURF-8, SURF-9 | N/A with docs and PM rationale | WP-7 | Entry gate, MS-5 | CTRL-1, CTRL-6 | VAL-0, VAL-11 | REV-1, REV-6 | OBS-7 | EVD-0, EVD-11 |
-| SURF-7 / Validation test surface | SURF-7 | PKG-1, PKG-2, PKG-3, PKG-4, PKG-5, PKG-6, PKG-7 | WP-1, WP-2, WP-3, WP-4, WP-5, WP-6, WP-7 | Entry gate, MS-1, MS-2, MS-3, MS-4, MS-5 | CTRL-1, CTRL-6 | VAL-0, VAL-1, VAL-2, VAL-3, VAL-4, VAL-5, VAL-6, VAL-7, VAL-8, VAL-9, VAL-10, VAL-11, VAL-12, VAL-13 | REV-1, REV-2, REV-3, REV-4, REV-5, REV-6 | REL-2, REL-3, REL-4, REL-5, OBS-7 | EVD-0, EVD-1, EVD-2, EVD-3, EVD-4, EVD-5, EVD-6, EVD-7, EVD-8, EVD-9, EVD-10, EVD-11, EVD-12, EVD-13 |
+| SURF-7 / Validation test surface | SURF-7 | PKG-1, PKG-2, PKG-3, PKG-4, PKG-5, PKG-6, PKG-7 | WP-1, WP-2, WP-3, WP-4, WP-5, WP-6, WP-7 | Entry gate, MS-1, MS-2, MS-3, MS-4, MS-5 | CTRL-1, CTRL-6 | VAL-0, VAL-1, VAL-2, VAL-3, VAL-4, VAL-5, VAL-6, VAL-7, VAL-8, VAL-9, VAL-10, VAL-11, VAL-12, VAL-13, VAL-14 | REV-1, REV-2, REV-3, REV-4, REV-5, REV-6 | REL-2, REL-3, REL-4, REL-5, OBS-7 | EVD-0, EVD-1, EVD-2, EVD-3, EVD-4, EVD-5, EVD-6, EVD-7, EVD-8, EVD-9, EVD-10, EVD-11, EVD-12, EVD-13, EVD-14 |
 | RISK-1 | SURF-4, SURF-5, SURF-6 | PKG-6, PKG-7 | WP-4, WP-6 | MS-3, MS-4 | CTRL-3, CTRL-7 | VAL-7, VAL-9 | REV-4 | REL-3, REL-4 | EVD-7, EVD-9 |
 | RISK-2 | SURF-3, SURF-6 | PKG-4, PKG-7 | WP-1, WP-3, WP-6 | MS-1, MS-3 | CTRL-6 | VAL-1, VAL-6, VAL-13 | REV-5 | OBS-1, OBS-3 | EVD-1, EVD-6, EVD-13 |
 | RISK-3 | SURF-1, SURF-2, SURF-4 | PKG-1, PKG-2, PKG-5 | WP-2, WP-5 | MS-2, MS-4 | CTRL-5 | VAL-2, VAL-4, VAL-8 | REV-2, REV-4 | REL-2, REL-3 | EVD-2, EVD-4, EVD-8 |
@@ -893,9 +897,9 @@ Complete.
 | RISK-5 | SURF-1, SURF-2, SURF-3, SURF-4, SURF-5, SURF-6, SURF-7, SURF-8, SURF-9 | PKG-1, PKG-2, PKG-3, PKG-4, PKG-5, PKG-6, PKG-7 | WP-1, WP-2, WP-3, WP-4, WP-5, WP-6, WP-7 | Entry gate, MS-1, MS-2, MS-3, MS-4, MS-5 | CTRL-4, CTRL-6 | VAL-0, VAL-11 | REV-1, REV-2, REV-3, REV-4, REV-5, REV-6 | OBS-7 | EVD-0, EVD-11 |
 | RISK-6 | SURF-4, SURF-5 | PKG-6 | WP-4, WP-7 | MS-3, MS-5 | CTRL-7 | VAL-7, VAL-12 | REV-4, REV-6 | REL-5, OBS-4, OBS-7 | EVD-7, EVD-12 |
 | Q-1 / Entry sequencing | SURF-9, SURF-10 | PKG-4 | WP-1, WP-3 | Entry gate, MS-1 | CTRL-1 | VAL-0 | REV-1 | REL-1 | EVD-0 |
-| Q-2 / Queue storage and index decision | SURF-6, SURF-8 | PKG-7 | WP-6 | MS-4 | CTRL-1, CTRL-6 | VAL-9, VAL-10 | REV-6 | OBS-2, OBS-6 | EVD-9, EVD-11 |
+| Q-2 / Queue storage and index decision | SURF-6, SURF-8 | PKG-7 | WP-6 | MS-4 | CTRL-1, CTRL-6 | VAL-9 | REV-5 | OBS-2, OBS-6 | EVD-9 |
 | Q-3 / Registry record strategy | SURF-1, SURF-2 | PKG-1, PKG-2 | WP-2 | MS-2 | CTRL-5 | VAL-2, VAL-4 | REV-2 | REL-2 | EVD-2, EVD-4 |
-| Q-4 / Skill adapter output contracts | SURF-4, SURF-6, SURF-8 | PKG-5, PKG-6 | WP-5 | MS-4 | CTRL-1, CTRL-3 | VAL-8, VAL-9 | REV-4, REV-6 | REL-3, OBS-3 | EVD-8, EVD-9 |
+| Q-4 / Skill adapter output contracts | SURF-4, SURF-6, SURF-8 | PKG-5, PKG-6 | WP-5 | MS-4 | CTRL-1, CTRL-3 | VAL-8 | REV-4 | REL-3, OBS-3 | EVD-8 |
 
 Section status:
 Complete.
