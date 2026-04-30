@@ -806,7 +806,7 @@ Complete.
 | ID | Action | Timing | Owner | Abort trigger | Evidence |
 | --- | --- | --- | --- | --- | --- |
 | REL-1 | Land recipe-backed workflow as a new workflow path or feature-gated starter without removing `agent.helloClaudex`. | WP-3 | Workflow implementation agent | Compiled bundle failure or nondeterministic import. | EVD-5 |
-| REL-2 | Enable fake recipe runs only after MS-1 approval. | After WP-1 | Workflow operator | Stale decision accepted or queue query missing required fields. | EVD-1 |
+| REL-2 | Enable fake recipe runs for WP-1/MS-1 validation under fake-only guardrails; enable broader fake-run rollout only after MS-1 approval. | During WP-1 validation; broader rollout after MS-1 | Workflow operator | Stale decision accepted, queue query missing required fields, or fake-only guardrails bypassed. | EVD-1 |
 | REL-3 | Enable real skill adapters only after MS-4 approval, including Q-4/Q-5 resolution and VAL-8 adapter evidence. | After WP-5 / MS-4 | Capability-policy reviewer | Read-only protected-path negative test, worktree containment proof, approved consensus-review shape, or typed adapter contract evidence fails. | EVD-7, EVD-8, EVD-10 |
 | REL-4 | Enable queue triage only after MS-4 approval. | After WP-6 | Workflow operator | Triage mutates queue state or fails the 50-item-within-5-seconds local measurement. | EVD-9 |
 | REL-5 | Run live Codex opt-in smoke and rollback drill before completion. | WP-7 | Workflow operator | Live run requests broader permissions, rollback cannot disable new starts, or registry workflow records cannot be reverted or pinned to the last validated commit. | EVD-12 |
@@ -888,7 +888,7 @@ Complete.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | SRC-1 / OBJ-1 / Critical path | SURF-1, SURF-3, SURF-4 | PKG-1, PKG-3, PKG-4, PKG-5 | WP-1, WP-3, WP-5 | MS-1, MS-4 | CTRL-1, CTRL-2 | VAL-1, VAL-3, VAL-8 | REV-1, REV-3 | REL-1, OBS-1 | EVD-1, EVD-3, EVD-8 |
 | SRC-5 / OBJ-2 / Typed registry contracts | SURF-1, SURF-2 | PKG-1, PKG-2 | WP-2 | MS-2 | CTRL-5 | VAL-2, VAL-4, VAL-16 | REV-2 | REL-2 | EVD-2, EVD-4, EVD-16 |
-| SRC-1 / REQ-13 / Registry evolution compatibility | SURF-1, SURF-2, SURF-3 | PKG-1, PKG-2, PKG-3 | WP-2, WP-3 | MS-2, MS-3 | CTRL-5, CTRL-6 | VAL-3, VAL-16 | REV-2, REV-3 | REL-1, REL-2 | EVD-3, EVD-16 |
+| SRC-1 / OBJ-1 / OBJ-2 / Registry evolution compatibility | SURF-1, SURF-2, SURF-3 | PKG-1, PKG-2, PKG-3 | WP-2, WP-3 | MS-2, MS-3 | CTRL-5, CTRL-6 | VAL-3, VAL-16 | REV-2, REV-3 | REL-1, REL-2 | EVD-3, EVD-16 |
 | OBJ-3 / Durable queue items | SURF-3, SURF-6 | PKG-4 | WP-1, WP-3 | MS-1, MS-3 | CTRL-6 | VAL-1, VAL-6 | REV-5 | OBS-1, OBS-2 | EVD-1, EVD-6 |
 | OBJ-4 / Safe resume | SURF-3 | PKG-4 | WP-1, WP-3 | MS-1, MS-3 | CTRL-6 | VAL-1, VAL-6, VAL-13 | REV-3, REV-5 | OBS-3 | EVD-1, EVD-6, EVD-13 |
 | OBJ-5 / Execution-profile enforcement | SURF-4, SURF-5 | PKG-6 | WP-4, WP-5 | MS-3, MS-4 | CTRL-3, CTRL-7 | VAL-7, VAL-9, VAL-10 | REV-4 | REL-3, OBS-4 | EVD-7, EVD-9, EVD-10 |
@@ -896,7 +896,7 @@ Complete.
 | OBJ-7 / Triage packets | SURF-6, SURF-8 | PKG-7 | WP-6 | MS-4 | CTRL-3, CTRL-6 | VAL-9 | REV-4 | REL-4, OBS-6 | EVD-9 |
 | SRC-4 / SRC-6 / PM readiness | SURF-9 | N/A with PM rationale | WP-7 | Entry gate, MS-5 | CTRL-1, CTRL-6 | VAL-0, VAL-11 | REV-1, REV-6 | OBS-7 | EVD-0, EVD-11 |
 | SRC-2 / SRC-3 / NG-2 / Provider-session non-authority | SURF-3, SURF-4, SURF-10 | PKG-3, PKG-4, PKG-5 | WP-1, WP-3, WP-5 | MS-1, MS-3, MS-4 | CTRL-2, CTRL-6 | VAL-5, VAL-8, VAL-13 | REV-3, REV-5 | REL-1, OBS-1, OBS-3 | EVD-5, EVD-8, EVD-13 |
-| SRC-1 / SRC-3 / REQ-12 / Recovery semantics | SURF-3, SURF-4, SURF-5 | PKG-3, PKG-4, PKG-6 | WP-3, WP-4 | MS-3 | CTRL-2, CTRL-3, CTRL-6 | VAL-14, VAL-15 | REV-3, REV-5 | OBS-3, OBS-4 | EVD-14, EVD-15 |
+| SRC-1 / SRC-3 / OBJ-4 / Recovery semantics | SURF-3, SURF-4, SURF-5 | PKG-3, PKG-4, PKG-6 | WP-3, WP-4 | MS-3 | CTRL-2, CTRL-3, CTRL-6 | VAL-14, VAL-15 | REV-3, REV-5 | OBS-3, OBS-4 | EVD-14, EVD-15 |
 | SRC-7 / Requested execution-spec artifact | SURF-8, SURF-9 | N/A with docs and PM rationale | WP-7 | Entry gate, MS-5 | CTRL-1, CTRL-6 | VAL-0, VAL-11 | REV-1, REV-6 | OBS-7 | EVD-0, EVD-11 |
 | SURF-7 / Validation test surface | SURF-7 | PKG-1, PKG-2, PKG-3, PKG-4, PKG-5, PKG-6, PKG-7 | WP-1, WP-2, WP-3, WP-4, WP-5, WP-6, WP-7 | Entry gate, MS-1, MS-2, MS-3, MS-4, MS-5 | CTRL-1, CTRL-6 | VAL-0, VAL-1, VAL-2, VAL-3, VAL-4, VAL-5, VAL-6, VAL-7, VAL-8, VAL-9, VAL-10, VAL-11, VAL-12, VAL-13, VAL-14, VAL-15, VAL-16 | REV-1, REV-1A, REV-2, REV-3, REV-4, REV-5, REV-6 | REL-2, REL-3, REL-4, REL-5, OBS-7 | EVD-0, EVD-1, EVD-2, EVD-3, EVD-4, EVD-5, EVD-6, EVD-7, EVD-8, EVD-9, EVD-10, EVD-11, EVD-12, EVD-13, EVD-14, EVD-15, EVD-16 |
 | RISK-1 | SURF-4, SURF-5, SURF-6 | PKG-6, PKG-7 | WP-4, WP-6 | MS-3, MS-4 | CTRL-3, CTRL-7 | VAL-7, VAL-9, VAL-10 | REV-4 | REL-3, REL-4 | EVD-7, EVD-9, EVD-10 |
