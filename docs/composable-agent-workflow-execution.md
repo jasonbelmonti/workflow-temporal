@@ -29,7 +29,7 @@ Execution approach:
 Use a risk-retirement and progressive-value sequence. First prove a fake recipe can validate, start, block on a durable queue item, and resume by queue item plus gate revision. Then harden registry contracts, Temporal state, execution-profile enforcement, worktree containment, skill adapters, queue triage, and live opt-in smoke evidence. Every implementation package shall have scoped validation, negative tests for the unsafe paths, and manual milestone approval before promotion.
 
 Entry condition:
-Execution shall not start until `SRC-1` is approved by Jason Belmonti, a Linear execution-control issue or project exists for this implementation, the registry dependency state is confirmed, and an independent capability-policy reviewer is assigned.
+WP-1 execution shall not start until `SRC-1` is approved by Jason Belmonti, this execution spec is approved or conditionally approved for WP-1, Q-1 is resolved, a Linear execution-control issue or project exists for this implementation, and an independent capability-policy reviewer is assigned. Q-3 and the registry dependency state are gates for WP-2 registry work, not blockers for the fake proving slice.
 
 Top risks or unknowns:
 - RISK-1: Execution-profile enforcement could be incomplete, allowing read-only review or triage steps to mutate protected paths or access disallowed tools.
@@ -103,7 +103,7 @@ Complete.
 Decision points:
 - DP-1: Approve `SRC-1` and this execution spec before implementation starts.
 - DP-2: Decide whether BEL-772 is implemented first, replaced by the recipe-backed gate model, or absorbed into WP-3 before Temporal queue work begins.
-- DP-3: Confirm registry package-kind strategy for `workflow-recipe`, `step-definition`, and runtime `execution-profile` before registry schema work lands.
+- DP-3: Confirm registry package-kind strategy for `workflow-recipe`, `step-definition`, and runtime `execution-profile` before WP-2 starts or registry schema work lands.
 - DP-4: Approve the fake recipe-to-gate proving slice before real skill adapters or live providers are enabled.
 - DP-5: Approve capability-policy negative-test evidence before read-only triage or consensus review can run.
 - DP-6: Approve rollback drill and operator handoff before marking the MVP complete.
@@ -667,7 +667,7 @@ Hosted UI, provider breadth beyond Codex, advanced heuristics, public reusable p
 Execution sequence:
 1. Resolve entry gates and Q-1.
 2. Execute WP-1 as the first proving slice.
-3. Execute WP-2 and WP-3 after MS-1; WP-2 must stabilize registry contracts before WP-3 locks workflow snapshot shapes.
+3. Execute WP-2 and WP-3 after MS-1; Q-3 and DEP-3 must be resolved before WP-2 starts, and WP-2 must stabilize registry contracts before WP-3 locks workflow snapshot shapes.
 4. Execute WP-4 before any real skill adapter receives write-capable tools.
 5. Execute WP-5 after MS-3, Q-4, and Q-5; execute WP-6 after MS-3, using the VAL-9 50-item measurement to resolve Q-2 before MS-4. They may proceed in parallel only if they do not share editable paths and use approved queue/profile contracts.
 6. Execute WP-7 after MS-4.
@@ -691,7 +691,7 @@ Complete.
 | MS-1 | Approve fake multi-run queue proof. | OBJ-1, OBJ-3, OBJ-4, WP-1, PKG-1, PKG-3, PKG-4, PKG-5 | Before WP-2 or WP-3 expands implementation | Jason Belmonti | VAL-1, EVD-1 | REV-1, REV-3 | EVD-1 | Approve / Reject / Conditional approval | Stop; revise recipe/gate model before broad implementation. |
 | MS-2 | Approve registry workflow contracts. | OBJ-2, WP-2, PKG-1, PKG-2, SURF-1, SURF-2 | Before WP-4 and before real adapters reference execution profiles | Registry contract reviewer | VAL-2, VAL-4, VAL-16, EVD-2, EVD-4, EVD-16 | REV-2 | EVD-2, EVD-4, EVD-16 | Approve / Reject / Conditional approval | Stop registry integration; revise package-kind, schema strategy, or compatibility posture. |
 | MS-3 | Approve queue safety and capability containment. | OBJ-3, OBJ-4, OBJ-5, OBJ-6, WP-3, WP-4, PKG-4, PKG-6 | Before WP-5 real skill adapters or WP-6 triage | Jason Belmonti and capability-policy reviewer | VAL-3, VAL-5, VAL-6, VAL-7, VAL-10, VAL-13, VAL-14, VAL-15, EVD-3, EVD-5, EVD-6, EVD-7, EVD-10, EVD-13, EVD-14, EVD-15 | REV-3, REV-4, REV-5 | EVD-3, EVD-5, EVD-6, EVD-7, EVD-10, EVD-13, EVD-14, EVD-15 | Approve / Reject / Conditional approval | Disable recipe-backed starts; keep fake slice only until defects are resolved. |
-| MS-4 | Approve adapter and triage usability. | OBJ-1, OBJ-5, OBJ-7, WP-5, WP-6, PKG-5, PKG-7 | Before live opt-in smoke or final readiness | Jason Belmonti | Q-4, Q-5, VAL-8, VAL-9, EVD-8, EVD-9 | REV-4 | EVD-8, EVD-9, Q-4 decision record | Approve / Reject / Conditional approval | Remove real adapters from activation path; continue with fake recipe evidence only. |
+| MS-4 | Approve adapter and triage usability. | OBJ-1, OBJ-5, OBJ-7, WP-5, WP-6, PKG-5, PKG-7 | Before live opt-in smoke or final readiness | Jason Belmonti | Q-4, Q-5, VAL-8, VAL-9, EVD-8, EVD-9 | REV-1A, REV-4 | EVD-8, EVD-9, Q-4 decision record | Approve / Reject / Conditional approval | Remove real adapters from activation path; continue with fake recipe evidence only. |
 | MS-5 | Approve MVP activation or rejection. | All objectives, WP-7, rollout, rollback, handoff | Before completion | Jason Belmonti | MS-3 approval including EVD-10; VAL-11, VAL-12, EVD-11, EVD-12 | REV-6 | EVD-10, EVD-11, EVD-12, handoff record | Approve / Reject / Conditional approval | Mark Not ready; keep recipe-backed starts disabled and preserve evidence. |
 
 Manual verification guide:
@@ -762,7 +762,7 @@ Complete.
 
 | ID | Method | Claim verified | Timing | Owner | Evidence artifact |
 | --- | --- | --- | --- | --- | --- |
-| VAL-0 | Review / PM inspection | Entry readiness is recorded: `SRC-1` approval, spec approval, Q-1 and Q-3 decisions, Linear execution-control issue or project with required headings, DEP-3 registry baseline decision, and reviewer assignment. | Before implementation starts | Jason Belmonti and Codex implementation agent | EVD-0 |
+| VAL-0 | Review / PM inspection | WP-1 entry readiness is recorded: `SRC-1` approval, spec approval or conditional approval for WP-1, Q-1 decision, Linear execution-control issue or project with required headings, and reviewer assignment. Q-3 and DEP-3 are recorded before WP-2 starts. | Before WP-1 starts; update before WP-2 starts for Q-3 and DEP-3 | Jason Belmonti and Codex implementation agent | EVD-0 |
 | VAL-1 | Test / Manual | Fake recipe queue proof validates, starts at least two workflow runs, creates at least three operator-reviewable queue items with workflow execution ID, queue item ID, gate revision, decision options, artifact refs, and compact context, rejects stale, wrong-workflow, and wrong-queue-item decisions, accepts only matching decisions, and completes targeted runs. | Pre-merge for WP-1 | Workflow implementation agent | EVD-1 |
 | VAL-2 | Test / Review | Registry rejects missing step contracts, missing execution profiles, prompt-only outputs, unsupported schema versions, and invalid references. | Pre-merge for WP-2 | Registry implementation agent | EVD-2 |
 | VAL-3 | Test | Running workflow uses pinned recipe snapshot and ignores later registry changes. | Pre-merge for WP-3 | Workflow implementation agent | EVD-3 |
@@ -787,7 +787,8 @@ Complete.
 
 | ID | Reviewer | Review scope | Blocking? | Completion evidence |
 | --- | --- | --- | --- | --- |
-| REV-1 | Jason Belmonti | Source authority, Linear project/ticket structure, Q-1 decision, Q-3 decision, Q-4 decision before WP-5, required task headings, and entry readiness. | Yes | VAL-0 approval, EVD-0, and Q-4 decision record. |
+| REV-1 | Jason Belmonti | Source authority, Linear project/ticket structure, Q-1 decision, required task headings, and WP-1/MS-1 entry readiness. | Yes | VAL-0 approval and EVD-0. |
+| REV-1A | Jason Belmonti | Q-4 `consensus-review` execution-shape decision before WP-5 and MS-4 adapter approval. | Yes before WP-5 | Q-4 decision record before WP-5 starts. |
 | REV-2 | Registry contract reviewer | Registry contracts, schema compatibility, validation, catalog, digest, runtime `execution-profile` distinction, and older pinned recipe compatibility across compatible schema/profile evolution. | Yes | MS-2 approval with EVD-2, EVD-4, and EVD-16. |
 | REV-3 | Workflow implementation reviewer | Temporal determinism, recipe snapshot use, workflow imports, queue state, active cancellation propagation, retry policy, provider-session fallback, and compiled bundle behavior. | Yes | MS-1/MS-3 approval with EVD-1, EVD-3, EVD-5, EVD-13, EVD-14, and EVD-15. |
 | REV-4 | Independent capability-policy reviewer | Execution-profile enforcement, read-only containment, one-run-one-worktree containment, protected-path checks, tool/MCP/skill authority, worker-agent/delegation denial, mutable worktree denial for read-only profiles, and approval authority. | Yes | MS-3/MS-4 approval with EVD-7, EVD-9, and EVD-10. |
@@ -897,7 +898,7 @@ Complete.
 | SRC-2 / SRC-3 / NG-2 / Provider-session non-authority | SURF-3, SURF-4, SURF-10 | PKG-3, PKG-4, PKG-5 | WP-1, WP-3, WP-5 | MS-1, MS-3, MS-4 | CTRL-2, CTRL-6 | VAL-5, VAL-8, VAL-13 | REV-3, REV-5 | REL-1, OBS-1, OBS-3 | EVD-5, EVD-8, EVD-13 |
 | SRC-1 / SRC-3 / REQ-12 / Recovery semantics | SURF-3, SURF-4, SURF-5 | PKG-3, PKG-4, PKG-6 | WP-3, WP-4 | MS-3 | CTRL-2, CTRL-3, CTRL-6 | VAL-14, VAL-15 | REV-3, REV-5 | OBS-3, OBS-4 | EVD-14, EVD-15 |
 | SRC-7 / Requested execution-spec artifact | SURF-8, SURF-9 | N/A with docs and PM rationale | WP-7 | Entry gate, MS-5 | CTRL-1, CTRL-6 | VAL-0, VAL-11 | REV-1, REV-6 | OBS-7 | EVD-0, EVD-11 |
-| SURF-7 / Validation test surface | SURF-7 | PKG-1, PKG-2, PKG-3, PKG-4, PKG-5, PKG-6, PKG-7 | WP-1, WP-2, WP-3, WP-4, WP-5, WP-6, WP-7 | Entry gate, MS-1, MS-2, MS-3, MS-4, MS-5 | CTRL-1, CTRL-6 | VAL-0, VAL-1, VAL-2, VAL-3, VAL-4, VAL-5, VAL-6, VAL-7, VAL-8, VAL-9, VAL-10, VAL-11, VAL-12, VAL-13, VAL-14, VAL-15, VAL-16 | REV-1, REV-2, REV-3, REV-4, REV-5, REV-6 | REL-2, REL-3, REL-4, REL-5, OBS-7 | EVD-0, EVD-1, EVD-2, EVD-3, EVD-4, EVD-5, EVD-6, EVD-7, EVD-8, EVD-9, EVD-10, EVD-11, EVD-12, EVD-13, EVD-14, EVD-15, EVD-16 |
+| SURF-7 / Validation test surface | SURF-7 | PKG-1, PKG-2, PKG-3, PKG-4, PKG-5, PKG-6, PKG-7 | WP-1, WP-2, WP-3, WP-4, WP-5, WP-6, WP-7 | Entry gate, MS-1, MS-2, MS-3, MS-4, MS-5 | CTRL-1, CTRL-6 | VAL-0, VAL-1, VAL-2, VAL-3, VAL-4, VAL-5, VAL-6, VAL-7, VAL-8, VAL-9, VAL-10, VAL-11, VAL-12, VAL-13, VAL-14, VAL-15, VAL-16 | REV-1, REV-1A, REV-2, REV-3, REV-4, REV-5, REV-6 | REL-2, REL-3, REL-4, REL-5, OBS-7 | EVD-0, EVD-1, EVD-2, EVD-3, EVD-4, EVD-5, EVD-6, EVD-7, EVD-8, EVD-9, EVD-10, EVD-11, EVD-12, EVD-13, EVD-14, EVD-15, EVD-16 |
 | RISK-1 | SURF-4, SURF-5, SURF-6 | PKG-6, PKG-7 | WP-4, WP-6 | MS-3, MS-4 | CTRL-3, CTRL-7 | VAL-7, VAL-9, VAL-10 | REV-4 | REL-3, REL-4 | EVD-7, EVD-9, EVD-10 |
 | RISK-2 | SURF-3, SURF-6 | PKG-4, PKG-7 | WP-1, WP-3, WP-6 | MS-1, MS-3 | CTRL-6 | VAL-1, VAL-6, VAL-13, VAL-15 | REV-5 | OBS-1, OBS-3 | EVD-1, EVD-6, EVD-13, EVD-15 |
 | RISK-3 | SURF-1, SURF-2, SURF-4 | PKG-1, PKG-2, PKG-5 | WP-2, WP-5 | MS-2, MS-4 | CTRL-5 | VAL-2, VAL-4, VAL-8 | REV-2, REV-4 | REL-2, REL-3 | EVD-2, EVD-4, EVD-8 |
@@ -907,7 +908,7 @@ Complete.
 | Q-1 / Entry sequencing | SURF-9, SURF-10 | PKG-4 | WP-1, WP-3 | Entry gate, MS-1 | CTRL-1 | VAL-0 | REV-1 | REL-1 | EVD-0 |
 | Q-2 / Queue storage and index decision | SURF-6, SURF-8 | PKG-7 | WP-6 | MS-4 | CTRL-1, CTRL-6 | VAL-9 | REV-5 | OBS-2, OBS-6 | EVD-9 |
 | Q-3 / Registry record strategy | SURF-1, SURF-2 | PKG-1, PKG-2 | WP-2 | MS-2 | CTRL-5 | VAL-2, VAL-4 | REV-2 | REL-2 | EVD-2, EVD-4 |
-| Q-4 / Consensus-review execution shape | SURF-3, SURF-4, SURF-6, SURF-8 | PKG-4, PKG-5, PKG-6 | WP-5 | MS-4 | CTRL-1, CTRL-3 | VAL-8 | REV-1, REV-4 | REL-3, OBS-3 | Q-4 decision record, EVD-8 |
+| Q-4 / Consensus-review execution shape | SURF-3, SURF-4, SURF-6, SURF-8 | PKG-4, PKG-5, PKG-6 | WP-5 | MS-4 | CTRL-1, CTRL-3 | VAL-8 | REV-1A, REV-4 | REL-3, OBS-3 | Q-4 decision record, EVD-8 |
 | Q-5 / Skill adapter output contracts | SURF-4, SURF-6, SURF-8 | PKG-5, PKG-6 | WP-5 | MS-4 | CTRL-1, CTRL-3 | VAL-8 | REV-4 | REL-3, OBS-3 | EVD-8 |
 
 Section status:
@@ -916,7 +917,7 @@ Complete.
 ## 18. Final Execution Gate
 
 Entry gate:
-Not satisfied. Required before implementation starts: Jason approves `SRC-1`; Jason approves this execution spec or a revised version; Q-1 and Q-3 are resolved; a Linear execution-control issue or project exists with required headings and traceability; DEP-3 registry baseline decision is recorded; and an independent capability-policy reviewer is assigned.
+Not satisfied. Required before WP-1 starts: Jason approves `SRC-1`; Jason approves this execution spec or conditionally approves it for WP-1; Q-1 is resolved; a Linear execution-control issue or project exists with required headings and traceability; and an independent capability-policy reviewer is assigned. Q-3 and DEP-3 are required before WP-2 starts, not before the fake proving slice.
 
 Milestone approval gate:
 MS-1 through MS-5 are fully specified with due points, verifiers, manual verification steps, required evidence, review gates, approval decisions, and failure paths. No milestone may be treated as approved until its named verifier records approval evidence.
