@@ -6,7 +6,7 @@ import type {
 export function buildFakeRecipeWorkflowId(
   input: FakeRecipeInput,
   {
-    randomId = globalThis.crypto.randomUUID
+    randomId = () => globalThis.crypto.randomUUID()
   }: BuildFakeRecipeWorkflowIdOptions = {}
 ): string {
   const label = input.runLabel ?? input.recipeSnapshot.recipeId;

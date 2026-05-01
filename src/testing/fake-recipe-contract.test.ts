@@ -57,6 +57,18 @@ test('fake recipe workflow IDs include snapshot context plus a collision-resista
   );
 });
 
+test('fake recipe workflow IDs use the default random UUID generator', () => {
+  const workflowId = buildFakeRecipeWorkflowId({
+    recipeSnapshot: fakeRecipeSingleGateSnapshot,
+    runLabel: 'Default Generator'
+  });
+
+  assert.match(
+    workflowId,
+    /^fake-recipe-gate-fake-recipe-single-gate-snapshot-b866fc4-default-generator-[a-f0-9-]{36}$/
+  );
+});
+
 test('fake recipe queue items contain the VAL-1 durable gate payload fields', async () => {
   const { state, queueItem } = await createBlockedFakeRecipeState();
 
