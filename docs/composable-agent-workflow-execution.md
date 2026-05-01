@@ -13,9 +13,9 @@
 | Reviewers | Jason Belmonti; workflow implementation reviewer; independent capability-policy reviewer; registry contract reviewer |
 | Decision owner | Jason Belmonti |
 | Target branch, release, or milestone | Composable workflow MVP |
-| Last updated | 2026-04-30 |
+| Last updated | 2026-05-01 |
 | Related source docs | `docs/composable-agent-workflow-design.md`; `docs/hello-claudex-mvp.md`; `agent-config-registry/docs/zero-dollar-agent-config-registry-design.md`; `agent-config-registry/docs/zero-dollar-agent-config-registry-execution.md` |
-| Related tickets | None named in `SRC-1`; implementation-control Linear issue or project pending as an entry condition. |
+| Related tickets | BEL-910; implementation-control Linear issue or project pending as an entry condition. |
 
 ## 0. Execution Summary
 
@@ -23,18 +23,18 @@ Decision requested:
 Approve with heightened controls
 
 Approved outcome:
-Execute the composable agent workflow control-plane design from `SRC-1` by adding a registry-backed recipe and execution-profile model, a Temporal recipe interpreter, durable approval queue items, safe gate resume semantics, execution-profile enforcement, read-only triage/review behavior, run worktree containment, and operator evidence needed to activate the MVP.
+Execute the composable agent workflow control-plane design from `SRC-1` by adding registry-backed workflow-unit contracts, recipe and adapter records, derived compatibility graph diagnostics, bounded loop/guard semantics, an execution-profile model, a Temporal recipe interpreter, durable approval queue items, safe gate resume semantics, execution-profile enforcement, read-only triage/review behavior, run worktree containment, and operator evidence needed to activate the MVP.
 
 Execution approach:
-Use a risk-retirement and progressive-value sequence. First prove a fake recipe can validate, start, block on a durable queue item, and resume by queue item plus gate revision. Then harden registry contracts, Temporal state, execution-profile enforcement, worktree containment, skill adapters, queue triage, and live opt-in smoke evidence. Every implementation package shall have scoped validation, negative tests for the unsafe paths, and manual milestone approval before promotion.
+Use a risk-retirement and progressive-value sequence. First prove a fake recipe can validate, start, block on a durable queue item, and resume by queue item plus gate revision. BEL-910 is resolved by D-5 before WP-2: static registry workflow composition uses non-installable workflow package kinds, embedded workflow-unit contracts, derived compatibility graph output, and bounded loop transitions. Then harden registry contracts, Temporal state, execution-profile enforcement, worktree containment, skill adapters, queue triage, and live opt-in smoke evidence. Every implementation package shall have scoped validation, negative tests for the unsafe paths, and manual milestone approval before promotion.
 
 Entry condition:
-WP-1 execution shall not start until `SRC-1` is approved by Jason Belmonti, this execution spec is approved or conditionally approved for WP-1, Q-1 is resolved, a Linear execution-control issue or project exists for this implementation, and an independent capability-policy reviewer is assigned. Q-3 and the registry dependency state are gates for WP-2 registry work, not blockers for the fake proving slice.
+WP-1 execution shall not start until `SRC-1` is approved by Jason Belmonti, this execution spec is approved or conditionally approved for WP-1, Q-1 is resolved, a Linear execution-control issue or project exists for this implementation, and an independent capability-policy reviewer is assigned. Q-3/BEL-910 is resolved by D-5; the registry dependency state remains a gate for WP-2 registry work, not a blocker for the fake proving slice.
 
 Top risks or unknowns:
 - RISK-1: Execution-profile enforcement could be incomplete, allowing read-only review or triage steps to mutate protected paths or access disallowed tools.
 - RISK-2: Queue item identity, gate revision, or workflow-run correlation could be wrong, causing an approval to resume the wrong work.
-- RISK-3: Registry recipes could degrade into prompt-shaped blobs instead of typed, validated execution contracts.
+- RISK-3: Registry recipes could degrade into prompt-shaped or compatibility-blind blobs instead of typed, validated execution contracts with explicit composition, adapter, and loop semantics.
 
 Section status:
 Complete
@@ -45,7 +45,7 @@ Complete
 
 | ID | Source | Authority | Execution implication |
 | --- | --- | --- | --- |
-| SRC-1 | `docs/composable-agent-workflow-design.md` in `workflow-temporal` commit `71ab334861f7b434d9782491100f5a342194be09` | Current R3 design authority, status In Review on 2026-04-30, decision requested `Approve with heightened controls`. | Defines the intended control plane: versioned recipes, pinned snapshots, execution profiles, durable queue items, approval decisions, read-only triage, worktree containment, and heightened controls. Implementation cannot start until approval is recorded. Temporal Update-specific execution choices are governed by `SRC-4`. |
+| SRC-1 | `docs/composable-agent-workflow-design.md` in `workflow-temporal` | Current R3 design authority, status In Review, decision requested `Approve with heightened controls`. | Defines the intended control plane: versioned recipes, workflow-unit contracts, derived compatibility diagnostics, bounded loops, pinned snapshots, execution profiles, durable queue items, approval decisions, read-only triage, worktree containment, and heightened controls. Implementation cannot start until approval is recorded. Temporal Update-specific execution choices are governed by `SRC-4`. |
 | SRC-2 | Existing `workflow-temporal` implementation in `src/workflows/**`, `src/activities/**`, and `src/claudex-turn/**` | Current executable baseline. | Shows the bounded Claudex turn boundary, hard-coded `agent.helloClaudex` workflow, current query and signal surfaces, cancellation behavior, session hints, and current absence of recipe, queue, worktree, or profile enforcement abstractions. |
 | SRC-3 | `docs/hello-claudex-mvp.md` | MVP baseline design for Temporal-owned durable state and bounded agent turns. | Preserves constraints that workflow code remains deterministic, human input occurs between bounded turns, provider session refs are hints, and artifact refs are queryable workflow state. |
 | SRC-4 | `docs/reference/temporal-typescript-sdk-1.16.0-authority.md`, which pins Temporal TypeScript SDK `1.16.0` from `package-lock.json`, `temporalio/sdk-typescript` tag `v1.16.0` commit `54eb0c85078632db04513d3838139ae242bf8d46`, and `temporalio/documentation` commit `26e515f28f8fdb27628b2fc968ef8f74a1d48d0f` path `docs/develop/typescript/**` | Temporal implementation authority for this spec. The repo-committed snapshot is the reviewable source authority; host-local cache paths are not source authority. | Requires deterministic workflow code, side effects in regular activities, typed Updates for state mutations that return results, read-only non-blocking Update validators, activity heartbeats for cancellation delivery, compact payload handling, visibility/search attributes or a durable projection for cross-run discovery, and replay/versioning controls for command-sequence changes. |
@@ -54,16 +54,16 @@ Complete
 | SRC-7 | User request on 2026-04-30 | Direct source request. | Draft this execution spec using `execution-spec-template` and `temporal:temporal-developer`, based on `docs/composable-agent-workflow-design.md`. |
 
 In scope:
-Implement the composable workflow MVP across `workflow-temporal` and `agent-config-registry`: workflow recipe records, step definitions, runtime `execution-profile` records, recipe validation, pinned recipe snapshots, a new recipe-backed Temporal workflow, fake and real step activity runners, approval queue items, typed gate decision Updates, stale-decision rejection, worktree allocation, artifact references, execution-profile enforcement, read-only triage/review packets, visibility or projection listing, replay/versioning gates, five known happy-path skill adapters, tests, docs, evidence, and rollback controls.
+Implement the composable workflow MVP across `workflow-temporal` and `agent-config-registry`: workflow-unit contract records, workflow recipe records, step definitions, adapter-definition records, derived compatibility graph diagnostics, bounded loop/guard transition fields, runtime `execution-profile` records, recipe validation, pinned recipe snapshots, a new recipe-backed Temporal workflow, fake and real step activity runners, approval queue items, typed gate decision Updates, stale-decision rejection, worktree allocation, artifact references, execution-profile enforcement, read-only triage/review packets, visibility or projection listing, replay/versioning gates, five known happy-path skill adapters, tests, docs, evidence, and rollback controls.
 
 Out of scope:
-This execution will not build a hosted multi-user workflow product, replace Temporal, make provider-native sessions authoritative, create a general `AGENTS.md` merge engine, implement a public marketplace protocol, move registry runtime state into Git, or require an always-on paid server for the MVP.
+This execution will not build a hosted multi-user workflow product, replace Temporal, make provider-native sessions authoritative, create a general `AGENTS.md` merge engine, implement a public marketplace protocol, move registry runtime state into Git, introduce a registry microservice, or require an always-on paid server for the MVP.
 
 Definition of done:
-All `WP-*` work packages are complete; all `MS-*` gates have approval evidence; all `VAL-*` checks have `EVD-*` artifacts; read-only and stale-resume negative tests pass; a fake recipe smoke test and one opt-in live Codex-backed smoke path are documented; recipe-backed starts can be disabled or rolled back; and the existing `agent.helloClaudex` path remains runnable or has an approved replacement decision.
+All `WP-*` work packages are complete; all `MS-*` gates have approval evidence; all `VAL-*` checks have `EVD-*` artifacts; compatibility graph and loop fixtures pass; read-only and stale-resume negative tests pass; a fake recipe smoke test and one opt-in live Codex-backed smoke path are documented; recipe-backed starts can be disabled or rolled back; and the existing `agent.helloClaudex` path remains runnable or has an approved replacement decision.
 
 Re-decision boundaries:
-Execution shall not re-decide Temporal as the durable state owner, provider session refs as non-authoritative hints, registry as the versioned configuration source, read-only review/triage containment, queue item plus gate revision resume semantics, or the no-paid-server MVP posture. Any change to those decisions requires a `DEV-*` deviation and Jason Belmonti approval before related implementation proceeds.
+Execution shall not re-decide Temporal as the durable state owner, provider session refs as non-authoritative hints, registry as the versioned static configuration compiler, read-only review/triage containment, queue item plus gate revision resume semantics, derived compatibility diagnostics as metadata, or the no-paid-server MVP posture. Any change to those decisions requires a `DEV-*` deviation and Jason Belmonti approval before related implementation proceeds.
 
 Section status:
 Complete
@@ -79,6 +79,7 @@ Complete
 | OBJ-5 | Execution profiles shall deny disallowed tools, skills, MCP servers, approval-Update authority, and protected-path writes before agent execution. | Before triage or consensus-review automation is enabled. | EVD-7, EVD-9 |
 | OBJ-6 | Mutating execution shall be isolated to one explicit run worktree and failed runs shall preserve artifacts for inspection and rollback. | Before mutating skill adapters are enabled. | EVD-7, EVD-10 |
 | OBJ-7 | Queue triage shall package pending gates into operator-review packets without approving gates or mutating workflow state. | Before completion handoff. | EVD-9, EVD-11 |
+| OBJ-8 | Registry workflow composition shall be proven through exported workflow-unit contracts, explicit adapters, derived compatibility graph diagnostics, and bounded loop fixtures before WP-2 records are implemented. | Before WP-2 starts and before MS-2 approval. | BEL-910, EVD-19, EVD-20 |
 | NG-1 | This execution will not replace the current MVP workflow with a hosted orchestration product. | Applies throughout MVP. | REV-1 |
 | NG-2 | This execution will not treat provider session IDs as authoritative workflow state. | Applies throughout MVP. | VAL-5, VAL-8, VAL-13 |
 | NG-3 | This execution will not implement custom credential storage or a new registry authentication model. | Applies throughout MVP. | REV-4 |
@@ -103,7 +104,7 @@ Complete
 Decision points:
 - DP-1: Approve `SRC-1` and this execution spec before implementation starts.
 - DP-2: Decide whether existing durable human-loop MVP work is implemented first, replaced by the recipe-backed gate model, or absorbed into WP-3 before Temporal queue work begins.
-- DP-3: Confirm registry package-kind strategy for `workflow-recipe`, `step-definition`, and runtime `execution-profile` before WP-2 starts or registry schema work lands.
+- DP-3: BEL-910 resolved on 2026-05-01 by approving D-5: additive non-installable package kinds for `workflow-recipe`, `step-definition`, `adapter-definition`, and runtime `execution-profile`; embedded `workflowUnitContract` fields; guarded loop fields on recipe transitions; and derived compatibility graph catalog output. Any revision before WP-2 starts requires reopening BEL-910 or recording an approved deviation.
 - DP-4: Approve the fake recipe-to-gate proving slice before real skill adapters or live providers are enabled.
 - DP-5: Approve capability-policy negative-test evidence before read-only triage or consensus review can run.
 - DP-6: Approve rollback drill and operator handoff before marking the MVP complete.
@@ -132,12 +133,15 @@ Complete
 | CON-11 | Constraint | Cross-run queue discovery shall use Temporal Visibility search attributes or a rebuildable durable projection; workflow histories shall store compact artifact references instead of large logs, diffs, transcripts, or review packets. | Workflow implementation agent | No | VAL-18 verifies listing, compact history, and projection rebuild or visibility behavior. |
 | CON-12 | Constraint | Long-running agent activities shall declare heartbeat timeouts, heartbeat progress, and propagate cancellation through `Context.current().cancelled`, `cancellationSignal()`, `AbortSignal`, or child-process termination where supported. | Workflow implementation reviewer | No | VAL-15 verifies heartbeat-backed cancellation delivery and provider abort behavior. |
 | CON-13 | Constraint | Recipe interpreter changes that add, remove, reorder, or change activity or child-workflow commands shall run saved-history replay with `Worker.runReplayHistory` and document a patching, new workflow type, Worker Versioning, or termination/migration decision before merge. | Workflow implementation reviewer | No | VAL-17 and REV-3 verify replay and versioning evidence. |
+| CON-14 | Constraint | `agent-config-registry` shall remain a static configuration compiler for the MVP, not a runtime workflow-state service or always-on microservice. | Registry contract reviewer | Yes for WP-2 | BEL-910 and VAL-19 record the selected static record/catalog strategy. |
+| CON-15 | Constraint | Compatibility graph edges shall be derived from workflow-unit contracts and explicit adapter definitions, not manually authored as source truth. | Registry implementation agent | Yes for WP-2 | VAL-19 verifies direct, adapter-required, incompatible, and composite-workflow-as-step fixtures. |
+| CON-16 | Constraint | Looping recipe transitions shall declare typed guard predicates, loop identity, carried state, maximum iterations, terminal fallback, and history-budget behavior. | Registry implementation agent and workflow implementation reviewer | Yes for WP-2/WP-3 | VAL-20 verifies accepting and rejecting loop fixtures. |
 | ASM-1 | Assumption | Fake steps can prove recipe, queue, and resume semantics before real skills are adapted. | Workflow implementation agent | No | VAL-1 proves the fake multi-run queue proof before WP-2 expands breadth. |
-| ASM-2 | Assumption | The registry can add workflow-specific package kinds or catalog record types without breaking existing skill, agent-instruction, or sync-profile behavior. | Registry implementation agent | No | VAL-4 runs compatibility tests across old and new records. |
+| ASM-2 | Assumption | The registry can add non-installable workflow package kinds for `workflow-recipe`, `step-definition`, `adapter-definition`, and runtime `execution-profile`; embedded `workflowUnitContract` and guarded loop fields; and derived compatibility graph catalog metadata without breaking existing skill, agent-instruction, or sync-profile behavior. | Registry implementation agent | No | BEL-910 approved D-5; VAL-4, VAL-16, VAL-19, and VAL-20 run compatibility tests across old and new records. |
 | ASM-3 | Assumption | Initial queue listing can use Temporal Visibility search attributes if the local dev server supports the required fields; a rebuildable local projection is added only if the 50-item triage measurement requires it. | Workflow implementation agent | No | Q-2 resolves during WP-6 through VAL-9 and VAL-18 before MS-4 approval. |
 | DEP-1 | Dependency | `SRC-1` design approval and this execution spec approval are required before implementation starts. | Jason Belmonti | Yes | Section 18 entry gate requires explicit approval evidence. |
 | DEP-2 | Dependency | A Linear execution-control issue or project shall exist before implementation starts. | Jason Belmonti | Yes | REV-1 verifies issue/project attribution and required heading format. |
-| DEP-3 | Dependency | Registry contract, validation, and catalog work must be stable enough to extend before formal workflow record implementation starts. | Registry implementation agent | Yes before WP-2 | DP-3 records whether to wait for the active registry branch to stabilize or implement workflow records on a coordinated registry worktree. |
+| DEP-3 | Dependency | Registry contract, validation, and catalog work must be stable enough to extend before formal workflow record implementation starts. | Registry implementation agent | Yes before WP-2 | DP-3/BEL-910 records whether to wait for the active registry branch to stabilize or implement workflow records on a coordinated registry worktree. |
 | DEP-4 | Dependency | Local Temporal server, Node 22+, and current offline test commands shall be available for integration smoke evidence. | Workflow operator | Yes before WP-3 | VAL-1 and VAL-5 record environment and command evidence. |
 
 Section status:
@@ -163,7 +167,7 @@ Sequencing principle:
 Execution shall retire the highest-risk claims before broad implementation: prove recipe/gate/resume semantics with fake steps first, harden registry contracts second, enforce capability and worktree containment before real skills, and add triage/live smoke only after queue and profile negative tests pass.
 
 Validation cadence:
-Every work package shall produce focused tests and an evidence note under `docs/evidence/composable-agent-workflow/`. Integration validation runs at each milestone. Negative tests for stale decisions, active heartbeat-backed cancellation, retry-policy and idempotency violations, read-only writes, disallowed tools, one-run-one-worktree containment, protected-path changes, replay compatibility, and history/visibility growth are mandatory before live or mutating adapter work.
+Every work package shall produce focused tests and an evidence note under `docs/evidence/composable-agent-workflow/`. Integration validation runs at each milestone. Negative tests for stale decisions, active heartbeat-backed cancellation, retry-policy and idempotency violations, read-only writes, disallowed tools, one-run-one-worktree containment, protected-path changes, compatibility graph classification, invalid loop declarations, replay compatibility, and history/visibility growth are mandatory before live or mutating adapter work.
 
 Deferred completeness:
 Hosted UI, public workflow marketplace, full multi-user permissions, provider-agnostic live smoke beyond Codex, advanced queue prioritization heuristics, and reusable cross-repository package publication are deferred until after the MVP proves the local control-plane path.
@@ -176,6 +180,8 @@ Primary risks and unknowns:
 | RISK-2 | Queue item identity or resume correlation could be wrong. | A human approval could resume the wrong workflow, step, or stale gate. | Workflow implementation agent | VAL-1 and VAL-6 stale/wrong-run decision tests. | MS-1, MS-3 |
 | RISK-3 | Recipes could become prompt-shaped blobs. | Composition, validation, triage, and downstream step execution require typed contracts. | Registry implementation agent | VAL-2 and VAL-4 reject prompt-only recipe and missing contract records. | MS-2 |
 | RISK-4 | Registry baseline is still in active MS-1 implementation. | Workflow-specific registry records may conflict with validation/catalog changes in progress. | Registry contract reviewer | DP-3, REV-2, and compatibility evidence from VAL-4. | MS-2 |
+| RISK-10 | Compatibility graph complexity could turn the registry into a runtime platform. | A registry microservice would add deployment, auth, persistence, and availability scope that the MVP explicitly avoids. | Registry contract reviewer | BEL-910 records static-compiler strategy; VAL-19 proves graph output is derived and metadata-only. | MS-2 |
+| RISK-11 | Looping recipes could run indefinitely or hide unresolved findings. | Review/fix/review loops must be bounded and operator-visible. | Workflow implementation reviewer | VAL-20 verifies guard predicates, maximum iterations, terminal fallback, and history-budget behavior. | MS-2, MS-3 |
 | RISK-7 | Mutating activity retries could duplicate filesystem or external side effects. | Temporal may re-execute activities after worker failure unless retry and idempotency policy is explicit. | Workflow implementation reviewer | VAL-14 verifies idempotency keys, retry taxonomy, and disabled nested provider retries. | MS-3 |
 | RISK-8 | Recipe-interpreter changes could break replay for in-flight workflows. | Any command-sequence change can block existing executions with nondeterminism errors. | Workflow implementation reviewer | VAL-17 replay evidence and versioning decision. | MS-3 and release gate |
 | RISK-9 | Queue listing or large artifacts could exceed local performance, payload, or history limits. | Triage depends on cross-run discovery, and Temporal histories cannot safely carry large agent artifacts. | Workflow implementation agent | VAL-18 listing, compact-history, projection rebuild, and continue-as-new evidence. | MS-4 |
@@ -190,8 +196,8 @@ Complete
 
 | ID | Surface | Change type | Owner | Read/write boundary | Review expectation |
 | --- | --- | --- | --- | --- | --- |
-| SURF-1 | `agent-config-registry/src/agent-config-registry/contracts/**`, `schemas/**` | Contract / Schema | Registry implementation agent | Add workflow recipe, step definition, and runtime execution-profile contracts without weakening existing package kinds. | REV-2 |
-| SURF-2 | `agent-config-registry/src/agent-config-registry/validation/**`, catalog/digest modules, tests | Code / Test | Registry implementation agent | Add validation and catalog behavior for workflow records with compatibility tests. | REV-2 |
+| SURF-1 | `agent-config-registry/src/agent-config-registry/contracts/**`, `schemas/**` | Contract / Schema | Registry implementation agent | Add non-installable workflow package kind contracts for `workflow-recipe`, `step-definition`, `adapter-definition`, and runtime `execution-profile`; embedded `workflowUnitContract` fields; guarded loop transition fields; and compatibility metadata without weakening existing package kinds. | REV-2 |
+| SURF-2 | `agent-config-registry/src/agent-config-registry/validation/**`, catalog/digest modules, tests | Code / Test | Registry implementation agent | Add validation and catalog behavior for workflow records, derived compatibility diagnostics, adapter-required edges, incompatible edge reporting, and bounded loop fixtures. | REV-2 |
 | SURF-3 | `workflow-temporal/src/workflows/**` | Code / Contract | Workflow implementation agent | Add a new recipe-backed workflow, queries, decision Updates, cancellation handling, search-attribute upserts where selected, and deterministic state transitions. Do not import side-effectful runtime code. | REV-3, REV-5 |
 | SURF-4 | `workflow-temporal/src/activities/**`, `src/claudex-turn/**` | Code | Workflow implementation agent | Add step activity runner and execution-context handling outside workflow code. | REV-3, REV-4 |
 | SURF-5 | Worktree manager and artifact storage modules under `workflow-temporal/src/**` | Code / Data | Workflow implementation agent | Add run-scoped worktree and artifact handling; writes only under explicit run-owned paths. | REV-4, REV-6 |
@@ -211,8 +217,8 @@ Constrain cross-repository implementation so registry contracts, recipe resoluti
 
 | ID | Unit | Ladder level | Mission | Observable value enabled | Risk retired | Public interface | Validation command | Promotion blockers |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| PKG-1 | Registry workflow contracts | 2 | Define typed workflow recipe, step definition, and runtime execution-profile records. | Recipes can be validated without prompt prose. | RISK-3, RISK-4 | Exported contract constants, types, schema records. | `npm test -- tests/contracts` in `agent-config-registry` | App-specific record semantics and no release compatibility process yet. |
-| PKG-2 | Registry workflow validation and catalog integration | 2 | Validate and catalog workflow records, references, and profile compatibility. | Registry can reject invalid recipes before workflow starts. | RISK-3, RISK-4 | Validation entrypoints, error codes, catalog record extensions. | `npm test -- tests/validation tests/catalog` in `agent-config-registry` | Depends on registry MS-1 validation/catalog baseline. |
+| PKG-1 | Registry workflow contracts | 2 | Define non-installable workflow recipe, step definition, adapter definition, and runtime execution-profile package kinds; embedded workflow-unit contract fields; guarded loop transition fields; and compatibility metadata contracts. | Recipes can be validated and composed without prompt prose. | RISK-3, RISK-4, RISK-10, RISK-11 | Exported contract constants, types, schema records. | `npm test -- tests/contracts` in `agent-config-registry` | App-specific record semantics and no release compatibility process yet. |
+| PKG-2 | Registry workflow validation and catalog integration | 2 | Validate and catalog workflow records, references, profile compatibility, adapter requirements, compatibility graph diagnostics, and guarded loop semantics. | Registry can reject invalid recipes and explain composition before workflow starts. | RISK-3, RISK-4, RISK-10, RISK-11 | Validation entrypoints, error codes, catalog record extensions, compatibility diagnostics. | `npm test -- tests/validation tests/catalog` in `agent-config-registry` | Depends on registry MS-1 validation/catalog baseline. |
 | PKG-3 | Recipe resolver and snapshot contract | 2 | Resolve registry content to immutable workflow snapshots. | Temporal runs start from pinned recipe snapshots. | RISK-2, RISK-3 | Snapshot types, resolver activity or starter API, digest metadata. | `npm test` in `workflow-temporal` plus resolver tests | App-specific Temporal start semantics. |
 | PKG-4 | Temporal recipe workflow and queue state | 2 | Interpret recipe steps, store run/gate state, manage visibility metadata, and handle decision Updates. | Fake and real recipe runs block and resume safely. | RISK-2, RISK-8, RISK-9 | Workflow type, query names, Update payloads, `DecisionResult`, state/result contracts. | `npm run test:smoke` in `workflow-temporal` plus replay tests | Temporal-specific and tied to local MVP workflow model. |
 | PKG-5 | Step activity runner and skill adapters | 2 | Execute one bounded typed step through fake or real agent adapters. | Real skills can run from typed inputs and produce typed outputs. | RISK-3 | Step request/result contracts, adapter registry, fake runner. | `npm test` in `workflow-temporal` | Skill-specific behavior and local provider assumptions. |
@@ -225,17 +231,17 @@ Ladder level:
 2.
 
 Mission:
-Own registry-side typed contracts for workflow recipes, step definitions, and runtime execution profiles.
+Own registry-side typed contracts for workflow units, workflow recipes, step definitions, adapter definitions, guarded loop transitions, compatibility metadata, and runtime execution profiles.
 
 Value / risk trace:
-- Observable value enabled: registry content can express a composable workflow without hard-coded Temporal step order.
-- Risk retired: RISK-3, RISK-4.
-- Validation evidence: VAL-2, VAL-4, EVD-2, EVD-4.
-- Blocking unknowns: DP-3.
+- Observable value enabled: registry content can express and explain composable workflows without hard-coded Temporal step order or prompt-inferred edges.
+- Risk retired: RISK-3, RISK-4, RISK-10, RISK-11.
+- Validation evidence: VAL-2, VAL-4, VAL-16, VAL-19, VAL-20, EVD-2, EVD-4, EVD-16, EVD-19, EVD-20.
+- Blocking unknowns: DP-3/BEL-910.
 
 Owns:
 - Files/directories: `agent-config-registry/src/agent-config-registry/contracts/**`, `schemas/**`, focused contract tests.
-- Concepts: package kinds or record types, schema versions, contract field names, compatibility between recipes and execution profiles.
+- Concepts: package kinds or record types, schema versions, contract field names, workflow-unit exported contracts, explicit adapter records, guarded loop fields, compatibility metadata, and compatibility between recipes and execution profiles.
 - Runtime responsibilities: none; this package declares contracts only.
 
 Does not own:
@@ -243,7 +249,7 @@ Does not own:
 - Responsibilities delegated elsewhere: validation to PKG-2, recipe resolution to PKG-3, runtime enforcement to PKG-6.
 
 Public interface:
-- Exported types: recipe, step definition, execution profile, gate policy, retry policy, capability policy.
+- Exported types: workflow unit, recipe, step definition, adapter definition, compatibility diagnostic, loop transition, execution profile, gate policy, retry policy, capability policy.
 - Exported functions/classes/components: constants and contract guards as needed.
 - Events/messages/contracts: registry record schemas.
 - CLI/API surface: none.
@@ -267,7 +273,7 @@ State boundary:
 Agent ownership boundary:
 - Agent editable paths: `agent-config-registry/src/agent-config-registry/contracts/**`, `agent-config-registry/schemas/**`, `agent-config-registry/tests/contracts/**`.
 - Agent read-only paths: registry design and execution docs; `workflow-temporal/docs/composable-agent-workflow-design.md`.
-- Required coordination before editing: package kind names, schema version fields, or existing `profile` semantics.
+- Required coordination before editing: package kind names, schema version fields, compatibility diagnostic format, guarded loop fields, or existing `profile` semantics.
 
 Validation command:
 `npm test -- tests/contracts` from `agent-config-registry`.
@@ -281,17 +287,17 @@ Ladder level:
 2.
 
 Mission:
-Own registry-side validation and catalog behavior for workflow records.
+Own registry-side validation and catalog behavior for workflow records, derived compatibility graph diagnostics, adapter-required edges, and guarded loop semantics.
 
 Value / risk trace:
-- Observable value enabled: invalid workflow recipes and profile references fail before a workflow starts.
-- Risk retired: RISK-3, RISK-4.
-- Validation evidence: VAL-2, VAL-4, EVD-2, EVD-4.
+- Observable value enabled: invalid workflow recipes, profile references, incompatible edges, missing adapters, and unbounded loops fail before a workflow starts.
+- Risk retired: RISK-3, RISK-4, RISK-10, RISK-11.
+- Validation evidence: VAL-2, VAL-4, VAL-16, VAL-19, VAL-20, EVD-2, EVD-4, EVD-16, EVD-19, EVD-20.
 - Blocking unknowns: DEP-3.
 
 Owns:
 - Files/directories: `agent-config-registry/src/agent-config-registry/validation/**`, catalog integration modules, validation/catalog tests.
-- Concepts: reference validation, missing-contract errors, prompt-only rejection, catalog metadata.
+- Concepts: reference validation, missing-contract errors, prompt-only rejection, compatibility edge classification, adapter requirement diagnostics, loop validation, catalog metadata.
 - Runtime responsibilities: local validation only.
 
 Does not own:
@@ -299,7 +305,7 @@ Does not own:
 - Responsibilities delegated elsewhere: contracts to PKG-1, runtime snapshot use to PKG-3.
 
 Public interface:
-- Exported types: validation result and error codes for workflow records.
+- Exported types: validation result, compatibility diagnostic, and error codes for workflow records.
 - Exported functions/classes/components: validation entrypoints and catalog builders.
 - Events/messages/contracts: catalog record output.
 - CLI/API surface: consumed by registry validation CLI when available.
@@ -323,7 +329,7 @@ State boundary:
 Agent ownership boundary:
 - Agent editable paths: `agent-config-registry/src/agent-config-registry/validation/**`, catalog modules, validation/catalog tests, schema fixtures.
 - Agent read-only paths: `agent-config-registry/src/agent-config-registry/contracts/**` unless assigned PKG-1 too.
-- Required coordination before editing: validation result shape, public error codes, generated catalog fields.
+- Required coordination before editing: validation result shape, public error codes, compatibility graph metadata, generated catalog fields.
 
 Validation command:
 `npm test -- tests/validation tests/catalog` from `agent-config-registry`.
@@ -665,7 +671,7 @@ Hosted UI, provider breadth beyond Codex, advanced heuristics, public reusable p
 | ID | Objective | Owner | Package boundary | Editable paths | Read-only paths | Inputs | Outputs | Dependencies | Observable value enabled | Risk retired | Milestone gate | Validation checkpoint | Completion criteria |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | WP-1 | Implement fake recipe-to-gate proving slice. | Workflow implementation agent | PKG-3, PKG-4, PKG-5 | Workflow-local fake fixture, resolver, workflow, contract, and test paths only; no `agent-config-registry` edits | Existing `hello-claudex` code, registry docs, `SRC-5` baseline | `SRC-1`, `SRC-2`, workflow-local fake recipe fixture | Fake recipes start at least two workflow runs, create at least three operator-reviewable queue items with workflow execution ID, queue item ID, gate revision, decision options, artifact refs, and compact context, reject stale, wrong-workflow, and wrong-queue-item decision Updates with typed `DecisionResult` values, resume only matching decisions, and complete | DEP-1, DEP-2, Q-1 decision | Proves critical recipe/gate/resume path before broad work | RISK-2 | MS-1 | VAL-1 | Automated fake vertical-slice tests and manual state inspection prove multi-run queue isolation, complete queue payloads, typed decision results, matching resume evidence, and post-WP-1 registry-boundary containment. |
-| WP-2 | Harden registry workflow records and compatibility. | Registry implementation agent | PKG-1, PKG-2 | `agent-config-registry` contracts, schemas, validation/catalog tests | `workflow-temporal` design and resolver tests | WP-1 fixture, registry MS-1 baseline | Validated recipe, step definition, execution-profile records and catalog metadata | DEP-3, DP-3 | Registry rejects invalid or prompt-only recipes and preserves pinned recipe compatibility across schema/profile evolution | RISK-3, RISK-4 | MS-2 | VAL-2, VAL-4, VAL-16 | Existing registry tests remain green; new workflow validation tests pass; older pinned recipe snapshots remain executable after newer compatible schema or execution-profile records are published; reviewer approves compatibility. |
+| WP-2 | Harden BEL-910 registry workflow records and compatibility. | Registry implementation agent | PKG-1, PKG-2 | `agent-config-registry` contracts, schemas, validation/catalog tests | `workflow-temporal` design and resolver tests | WP-1 fixture, registry MS-1 baseline, BEL-910 decision | Validated workflow-unit, recipe, step definition, adapter-definition, loop transition, execution-profile records, derived compatibility graph diagnostics, and catalog metadata | DEP-3, DP-3/BEL-910 | Registry rejects invalid or prompt-only recipes, explains direct/adapter-required/incompatible composition edges, rejects unbounded loops, and preserves pinned recipe compatibility across schema/profile evolution | RISK-3, RISK-4, RISK-10, RISK-11 | MS-2 | VAL-2, VAL-4, VAL-16, VAL-19, VAL-20 | Existing registry tests remain green; new workflow validation tests pass; compatibility graph fixtures classify direct, adapter-required, incompatible, and composite-workflow-as-step edges; loop fixtures accept bounded loops and reject unbounded loops; older pinned recipe snapshots remain executable after newer compatible schema or execution-profile records are published; reviewer approves compatibility. |
 | WP-3 | Build durable Temporal recipe workflow and approval queue semantics. | Workflow implementation agent | PKG-3, PKG-4 | `workflow-temporal/src/workflows/**`, workflow tests | Registry validation modules, activity runner internals | WP-1 and WP-2 contracts | Production-shaped recipe workflow state, queue item query/list metadata, decision Updates with typed `DecisionResult`, retry policy, cancel/abandon semantics, replay/versioning gate, compact history policy | MS-1, Q-1, DEP-4; WP-2 registry contracts stabilized before workflow snapshot shape lock | Queue state becomes durable, inspectable, listable, and replay-safe | RISK-2, RISK-8, RISK-9 | MS-3 | VAL-3, VAL-5, VAL-6, VAL-13, VAL-14, VAL-15, VAL-17, VAL-18 | Workflow bundle tests cover pinned snapshot, retry policy, stale decisions, active heartbeat-backed cancellation propagation, abandon, provider-session loss, query/list state, compact artifacts, replay compatibility, and versioning decision evidence. |
 | WP-4 | Implement execution-profile enforcement and worktree/artifact containment. | Capability-policy implementation agent | PKG-6 | Enforcement, worktree, artifact modules and tests | Workflow queue contracts, registry profile contracts | WP-2 execution-profile schema; WP-3 state | Fail-closed execution context, one-run-one-worktree allocation, read-only bundle, failed-worktree preservation, protected-path diff checks | MS-2 | Read-only and mutating execution profiles have enforceable runtime and worktree boundaries before real adapters run | RISK-1 | MS-3 | VAL-7, VAL-10 | Negative and containment tests prove protected writes, disallowed tools, disallowed skills, worker-agent/delegation denial, write-capable tool denial, no mutable worktree path for read-only profiles, approval-Update authority denial, one-run-one-worktree allocation, and failed-worktree preservation before WP-5 can proceed. |
 | WP-5 | Adapt the five known happy-path skills and approved consensus review shape. | Step adapter implementation agent | PKG-5, PKG-6 | Step adapter modules, fixtures, adapter tests | Skill source docs, registry contracts, workflow state | Approved profile enforcement, Q-4 consensus-review shape decision, and Q-5 typed step contracts | Typed adapters for `linear-next-task`, `handoff-prompt`, `code-simplifier`, `organize-code-boundaries`, and `consensus-review`; one validated five-step happy-path recipe; fake fallbacks | MS-3, Q-4, Q-5 | Recipe can represent and execute the intended workflow path | RISK-3 | MS-4 | VAL-8 | Adapter tests show typed inputs/outputs; registry validation accepts one full five-step recipe ordered as `linear-next-task` -> `handoff-prompt` -> `code-simplifier` -> `organize-code-boundaries` -> `consensus-review` without hard-coded workflow-code step order; `consensus-review` follows the approved Q-4 shape under a read-only profile. |
@@ -674,8 +680,8 @@ Hosted UI, provider breadth beyond Codex, advanced heuristics, public reusable p
 
 Execution sequence:
 1. Resolve entry gates and Q-1.
-2. Execute WP-1 as the first proving slice. Any registry-adjacent work in WP-1 is workflow-local fixture-only, shall not edit `agent-config-registry`, and shall not decide package-kind, schema, or catalog strategy before Q-3 and DP-3.
-3. Execute WP-2 and WP-3 after MS-1; Q-3 and DEP-3 must be resolved before WP-2 starts, and WP-2 must stabilize registry contracts before WP-3 locks workflow snapshot shapes.
+2. Execute WP-1 as the first proving slice. Any registry-adjacent work in WP-1 is workflow-local fixture-only, shall not edit `agent-config-registry`, and shall not override the BEL-910/D-5 package-kind, schema, catalog, compatibility graph, adapter, or loop strategy.
+3. Execute WP-2 and WP-3 after MS-1; Q-3/BEL-910 is resolved by D-5, DEP-3 must still be resolved before WP-2 starts, and WP-2 must stabilize registry contracts before WP-3 locks workflow snapshot shapes.
 4. Execute WP-4 before any real skill adapter receives write-capable tools.
 5. Execute WP-5 after MS-3, Q-4, and Q-5; execute WP-6 after MS-3, using the VAL-9 and VAL-18 50-item measurements to resolve Q-2 before MS-4. They may proceed in parallel only if they do not share editable paths and use approved queue/profile contracts.
 6. Execute WP-7 after MS-4.
@@ -700,7 +706,7 @@ Jason Belmonti is the named human verifier for every milestone gate. Required re
 | ID | Gate objective | Covered work | Due point | Human verifier | Prerequisites | Review gate | Required evidence | Approval decision | Failure path |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | MS-1 | Approve fake multi-run queue proof. | OBJ-1, OBJ-3, OBJ-4, WP-1, PKG-3, PKG-4, PKG-5 | Before WP-2 or WP-3 expands implementation | Jason Belmonti | VAL-1 and EVD-1, including post-WP-1 confirmation that WP-1 changed no `agent-config-registry` contract, schema, validation, or catalog files | REV-1, REV-3 | EVD-1 with WP-1 registry-boundary evidence | Approve / Reject / Conditional approval | Stop; revise recipe/gate model before broad implementation. If WP-1 needs registry contract/schema changes, stop WP-1 and move that work behind WP-2/MS-2 or add an explicit `DEV-*` with `REV-2` approval. |
-| MS-2 | Approve registry workflow contracts. | OBJ-2, WP-2, PKG-1, PKG-2, SURF-1, SURF-2 | Before WP-4 and before real adapters reference execution profiles | Jason Belmonti | Named `REV-2` reviewer assignment recorded in EVD-0; VAL-2, VAL-4, VAL-16, EVD-2, EVD-4, EVD-16 | REV-2 | EVD-2, EVD-4, EVD-16 | Approve / Reject / Conditional approval | Stop registry integration; revise package-kind, schema strategy, or compatibility posture. |
+| MS-2 | Approve BEL-910 registry workflow contracts and composition model. | OBJ-2, OBJ-8, WP-2, PKG-1, PKG-2, SURF-1, SURF-2 | Before WP-4 and before real adapters reference execution profiles | Jason Belmonti | BEL-910 decision recorded; named `REV-2` reviewer assignment recorded in EVD-0; VAL-2, VAL-4, VAL-16, VAL-19, VAL-20, EVD-2, EVD-4, EVD-16, EVD-19, EVD-20 | REV-2 | EVD-2, EVD-4, EVD-16, EVD-19, EVD-20, BEL-910 decision record | Approve / Reject / Conditional approval | Stop registry integration; revise package-kind/schema strategy, static compiler boundary, compatibility graph posture, adapter semantics, loop semantics, or pinned snapshot compatibility. |
 | MS-3 | Approve queue safety and capability containment. | OBJ-3, OBJ-4, OBJ-5, OBJ-6, WP-3, WP-4, PKG-4, PKG-6 | Before WP-5 real skill adapters or WP-6 triage | Jason Belmonti | Named `REV-3`, `REV-4`, and `REV-5` reviewer assignments recorded in EVD-0; VAL-3, VAL-5, VAL-6, VAL-7, VAL-10, VAL-13, VAL-14, VAL-15, VAL-17, EVD-3, EVD-5, EVD-6, EVD-7, EVD-10, EVD-13, EVD-14, EVD-15, EVD-17 | REV-3, REV-4, REV-5 | EVD-3, EVD-5, EVD-6, EVD-7, EVD-10, EVD-13, EVD-14, EVD-15, EVD-17 | Approve / Reject / Conditional approval | Disable recipe-backed starts; keep fake slice only until defects are resolved. |
 | MS-4 | Approve adapter and triage usability. | OBJ-1, OBJ-5, OBJ-7, WP-5, WP-6, PKG-5, PKG-7 | Before live opt-in smoke or final readiness | Jason Belmonti | Q-4, Q-5, VAL-8, VAL-9, VAL-18, EVD-8, EVD-9, EVD-18 | REV-1A, REV-4, REV-5 | EVD-8, EVD-9, EVD-18, Q-4 decision record, Q-5 adapter contract decision record | Approve / Reject / Conditional approval | Remove real adapters from activation path; continue with fake recipe evidence only. |
 | MS-5 | Approve MVP activation or rejection. | All objectives, WP-7, rollout, rollback, handoff | Before completion | Jason Belmonti | MS-4 approval; MS-3 approval including EVD-10 and EVD-17; VAL-11, VAL-12, VAL-18, EVD-11, EVD-12, EVD-18 | REV-6 | EVD-10, EVD-11, EVD-12, EVD-17, EVD-18, handoff record | Approve / Reject / Conditional approval | Mark Not ready; keep recipe-backed starts disabled and preserve evidence. |
@@ -722,7 +728,7 @@ Manual verification guide:
 | MV-6C | MS-3 | Cancel an active running step while its activity runner is in flight. | The activity runner has a heartbeat timeout, heartbeats progress, receives cancellation through heartbeat-backed delivery, aborts provider calls or child processes when supported, records cancelled state, stops subsequent step scheduling, and preserves protected-path diff artifacts. | EVD-15 |
 | MV-6D | MS-3 | Replay saved fake recipe workflow histories against the current workflow bundle. | `Worker.runReplayHistory` succeeds for unchanged command sequences; any command-sequence change has a recorded patch, new workflow type, Worker Versioning, or termination/migration decision. | EVD-17 |
 | MV-6E | MS-4 | Inspect queue listing and history-budget evidence for 50 pending queue items. | Queue items are discovered through Temporal Visibility search attributes or a rebuildable projection within the local SLA; workflow histories contain compact artifact refs, not large logs, diffs, transcripts, or review packets. | EVD-18 |
-| MV-7A | MS-4 | Inspect or run the five happy-path recipe and step adapter evidence. | One validated recipe represents `linear-next-task` -> `handoff-prompt` -> `code-simplifier` -> `organize-code-boundaries` -> `consensus-review` without workflow-code step ordering; each adapter exposes typed input, output, artifact, and gate contracts; `consensus-review` follows the Q-4 approved shape and is bound to a read-only execution profile. | EVD-8, EVD-9 |
+| MV-7A | MS-4 | Inspect or run the five happy-path recipe and step adapter evidence. | One validated recipe represents `linear-next-task` -> `handoff-prompt` -> `code-simplifier` -> `organize-code-boundaries` -> `consensus-review` without workflow-code step ordering; each adapter exposes typed input, output, artifact, and gate contracts; compatibility graph output explains required edges; `consensus-review` follows the Q-4 approved shape and is bound to a read-only execution profile. | EVD-8, EVD-9, EVD-19 |
 | MV-7 | MS-4 | Generate a triage packet from seed queue items. | Packet references still-open queue item IDs and does not approve, reject, cancel, or abandon any gate. | EVD-9 |
 | MV-8 | MS-5 | Execute rollback drill. | New recipe-backed starts can be disabled, existing `agent.helloClaudex` or approved equivalent remains runnable, failed worktrees/artifacts are preserved, and registry workflow records or execution-profile publication can be reverted or pinned to the last validated commit. | EVD-10, EVD-12 |
 | MV-8A | MS-5 | Run the live opt-in smoke path under approved execution profiles. | The Codex-backed recipe path completes or reaches a documented gate without requesting broader permissions, and smoke logs identify the recipe snapshot and execution profile IDs. | EVD-12 |
@@ -745,6 +751,7 @@ Complete
 | CTRL-8 | A recipe-interpreter change adds, removes, reorders, or changes activity or child-workflow commands. | Stop merge until saved-history replay passes and a Temporal versioning decision is recorded. | Workflow implementation reviewer | EVD-17 replay/versioning record. |
 | CTRL-9 | A long-running activity lacks heartbeat timeout, heartbeat progress, or provider abort propagation. | Block the activity from live execution until cancellation delivery and cleanup behavior are implemented and tested. | Workflow implementation reviewer | EVD-15 cancellation evidence. |
 | CTRL-10 | Queue listing requires querying every workflow execution, or workflow state grows with large artifacts. | Stop WP-6 or release activation and move listing to Temporal Visibility or a rebuildable projection; move large data to artifact refs and define continue-as-new threshold. | Workflow implementation agent | EVD-18 history/visibility evidence. |
+| CTRL-11 | WP-2 implementation deviates from BEL-910 D-5 for workflow-unit contracts, adapter semantics, derived compatibility graph output, loop semantics, pinned snapshot compatibility, or the no-microservice boundary. | Stop WP-2 and keep divergent registry workflow records unimplemented until BEL-910 is reopened or an approved deviation is recorded. | Registry contract reviewer | BEL-910 decision record, EVD-19, EVD-20. |
 
 Deviation rules:
 Any change to source authority, execution level, rollback posture, queue ownership, execution-profile policy, protected-path scope, package-kind semantics, Temporal Update semantics, replay/versioning posture, history-budget posture, or first proving slice shall be recorded as `DEV-*` with owner, approver, rationale, impact, and evidence before implementation continues.
@@ -759,8 +766,12 @@ Complete
 
 | Change | Impact | Compatibility | Reversibility | Validation |
 | --- | --- | --- | --- | --- |
-| Add registry `workflow-recipe` records. | New configuration contract for ordered or branched workflow steps. | Existing registry package kinds must continue to validate and catalog unchanged; older pinned recipe snapshots must remain executable after newer compatible schema or execution-profile records are published. | Reversible by removing records and disabling recipe-backed starts. | VAL-2, VAL-4, VAL-16 |
-| Add registry `step-definition` records. | Defines typed input, output, artifact, and gate contracts for recipe steps. | Existing skills are referenced by adapters; skill package content does not need immediate rewrite. | Reversible by removing step records and adapters. | VAL-2, VAL-8 |
+| Add registry `workflow-recipe` records. | New non-installable package kind for ordered, branched, or guarded-loop workflow steps with exported composite workflow-unit contract. | Existing registry package kinds must continue to validate and catalog unchanged; older pinned recipe snapshots must remain executable after newer compatible schema or execution-profile records are published. | Reversible by removing records and disabling recipe-backed starts. | VAL-2, VAL-4, VAL-16 |
+| Add registry `step-definition` records. | New non-installable package kind defining typed input, output, artifact, gate, side-effect, and execution-profile constraints for recipe steps. | Existing skills are referenced by adapters; skill package content does not need immediate rewrite. | Reversible by removing step records and adapters. | VAL-2, VAL-8 |
+| Add embedded `workflowUnitContract` schema fields. | Defines the exported composition interface shared by primitive steps and composite workflows without a standalone source-record kind for MVP. | Existing package kinds must ignore or reject unsupported workflow-unit metadata by schema version; composite workflows can be reused as steps only through this public contract. | Reversible by removing fields and disabling recipe-backed starts. | VAL-19 |
+| Add registry `adapter-definition` records. | New non-installable package kind defining explicit typed transforms between otherwise incompatible workflow-unit outputs and inputs. | Existing recipes remain valid; adapter-required edges are diagnostics until a recipe references an adapter. | Reversible by removing adapter records and recipes that depend on them. | VAL-19 |
+| Add derived compatibility graph catalog metadata. | Explains direct, adapter-required, incompatible, and composite-workflow-as-step composition relationships. | Graph output is metadata-only and derived from source records, not source truth. | Reversible by regenerating catalog without graph metadata and disabling graph-dependent starts. | VAL-19 |
+| Add guarded loop transition fields. | Adds typed loop predicates and loop state to `workflow-recipe` transitions. | Existing non-loop recipes remain valid; loop recipes fail validation without max iterations, terminal fallback, and history-budget behavior. | Reversible by disabling or removing loop recipes. | VAL-20 |
 | Add runtime `execution-profile` records. | Adds capability policy for tools, skills, MCP, approval-Update authority, retry class, idempotency, and filesystem policy. | Must be distinct from current sync `profile` package kind and versioned so older pinned recipe snapshots keep their original execution-profile semantics. | Reversible by disabling recipe-backed starts and removing records. | VAL-4, VAL-7, VAL-14, VAL-16 |
 | Add recipe snapshot to workflow start/state. | New recipe-backed workflow start contract and query state. | Existing `agent.helloClaudex` remains compatible unless deviation approved. | Reversible by disabling new workflow type. | VAL-3, VAL-5 |
 | Add approval queue item and decision Update contracts. | Enables durable gate listing and resume by queue item plus gate revision, returning typed `DecisionResult` values for accepted, rejected, stale, invalid, and no-effect decisions. | Version queue item payloads and Update payload/result contracts to protect long-running workflows; validators remain read-only and non-blocking. | Reversible for new runs; existing blocked runs can be cancelled or abandoned. | VAL-6 |
@@ -781,7 +792,7 @@ Complete
 
 | ID | Method | Claim verified | Timing | Owner | Evidence artifact |
 | --- | --- | --- | --- | --- | --- |
-| VAL-0 | Review / PM inspection | WP-1 entry readiness is recorded: `SRC-1` approval, spec approval or conditional approval for WP-1, Q-1 decision, Linear execution-control issue or project with required headings, and named reviewer assignments for each `REV-*` gate before its dependent milestone can be approved. Q-3 and DEP-3 are recorded before WP-2 starts. | Before WP-1 starts; update before WP-2 starts for Q-3 and DEP-3; update before any milestone whose dependent `REV-*` reviewer has not yet been named | Jason Belmonti and Codex implementation agent | EVD-0 |
+| VAL-0 | Review / PM inspection | WP-1 entry readiness is recorded: `SRC-1` approval, spec approval or conditional approval for WP-1, Q-1 decision, Linear execution-control issue or project with required headings, and named reviewer assignments for each `REV-*` gate before its dependent milestone can be approved. Q-3 is resolved by BEL-910/D-5; DEP-3 is recorded before WP-2 starts. | Before WP-1 starts; update before WP-2 starts for DEP-3; update before any milestone whose dependent `REV-*` reviewer has not yet been named | Jason Belmonti and Codex implementation agent | EVD-0 |
 | VAL-1 | Test / Manual | Fake recipe queue proof validates, starts at least two workflow runs, creates at least three operator-reviewable queue items with workflow execution ID, queue item ID, gate revision, decision options, artifact refs, and compact context, rejects stale, wrong-workflow, and wrong-queue-item decision Updates with typed `DecisionResult` values, accepts only matching decisions, completes targeted runs, and records post-WP-1 evidence that no `agent-config-registry` contract, schema, validation, or catalog files changed. | Pre-merge for WP-1 | Workflow implementation agent | EVD-1 |
 | VAL-2 | Test / Review | Registry rejects missing step contracts, missing execution profiles, prompt-only outputs, unsupported schema versions, and invalid references. | Pre-merge for WP-2 | Registry implementation agent | EVD-2 |
 | VAL-3 | Test | Running workflow uses pinned recipe snapshot and ignores later registry changes. | Pre-merge for WP-3 | Workflow implementation agent | EVD-3 |
@@ -800,6 +811,11 @@ Complete
 | VAL-16 | Compatibility test | New registry schema records are versioned and older pinned recipe snapshots remain executable after newer compatible schema or execution-profile records are published. | Pre-merge for WP-2; repeat before MS-5 if registry compatibility behavior changes | Registry contract reviewer | EVD-16 |
 | VAL-17 | Replay / Release gate | Saved fake and representative recipe workflow histories replay with `Worker.runReplayHistory`; any interpreter change that alters activity or child-workflow command sequence records a patching, new workflow type, Worker Versioning, or termination/migration decision before merge. | Pre-merge for WP-3; repeat before release when interpreter commands change | Workflow implementation reviewer | EVD-17 |
 | VAL-18 | Measurement / Inspection | Queue listing uses Temporal Visibility search attributes or a rebuildable durable projection, 50 pending items meet the local listing SLA, workflow histories store compact artifact references instead of large artifacts, and projection rebuild or continue-as-new behavior is exercised. | Pre-release for WP-6; repeat before MS-5 | Workflow implementation agent and operator tooling agent | EVD-18 |
+| VAL-19 | Test / Inspection | Registry validation or catalog generation emits compatibility diagnostics for one direct compatible edge, one adapter-required edge, one incompatible edge, and one composite-workflow-as-step edge, all derived from workflow-unit contracts and adapter records. | Pre-merge for WP-2; required before MS-2 | Registry implementation agent and registry contract reviewer | EVD-19 |
+| VAL-20 | Test / Inspection | Registry validation accepts a bounded review/fix/review loop only when it declares typed guard predicates, loop ID, carried state, maximum iterations, terminal fallback, and history-budget behavior, and rejects loop recipes missing those fields. | Pre-merge for WP-2; replay implications checked again before MS-3 if interpreter loop commands change | Registry implementation agent and workflow implementation reviewer | EVD-20 |
+
+Design-spec mapping:
+Execution `VAL-19` / `EVD-19` maps to design `VAL-21`; execution `VAL-20` / `EVD-20` maps to design `VAL-22`.
 
 Section status:
 Complete
@@ -810,7 +826,7 @@ Complete
 | --- | --- | --- | --- | --- |
 | REV-1 | Jason Belmonti | Source authority, Linear project/ticket structure, Q-1 decision, required task headings, and WP-1/MS-1 entry readiness. | Yes | VAL-0 approval and EVD-0. |
 | REV-1A | Jason Belmonti | Q-4 `consensus-review` execution-shape decision and Q-5 typed adapter contract decision before WP-5 and MS-4 adapter approval. | Yes before WP-5 | Q-4 decision record and Q-5 adapter contract decision record before WP-5 starts. |
-| REV-2 | Registry contract reviewer | Registry contracts, schema compatibility, validation, catalog, digest, runtime `execution-profile` distinction, and older pinned recipe compatibility across compatible schema/profile evolution. | Yes | MS-2 approval with EVD-2, EVD-4, and EVD-16. |
+| REV-2 | Registry contract reviewer | BEL-910 decision, registry contracts, schema compatibility, validation, catalog, digest, workflow-unit contracts, adapter definitions, derived compatibility graph metadata, guarded loop fields, runtime `execution-profile` distinction, and older pinned recipe compatibility across compatible schema/profile evolution. | Yes | MS-2 approval with EVD-2, EVD-4, EVD-16, EVD-19, and EVD-20. |
 | REV-3 | Workflow implementation reviewer | Temporal determinism, recipe snapshot use, workflow imports, queue state, decision Update handlers, heartbeat-backed cancellation propagation, retry/idempotency policy, provider-session fallback, replay compatibility, versioning decisions, and compiled bundle behavior. | Yes | MS-1/MS-3 approval with EVD-1, EVD-3, EVD-5, EVD-13, EVD-14, EVD-15, and EVD-17. |
 | REV-4 | Independent capability-policy reviewer | Execution-profile enforcement, read-only containment, one-run-one-worktree containment, protected-path checks, tool/MCP/skill authority, worker-agent/delegation denial, mutable worktree denial for read-only profiles, and approval-Update authority. | Yes | MS-3/MS-4 approval with EVD-7, EVD-9, and EVD-10. |
 | REV-5 | Workflow implementation reviewer | Queue item identity, stale decisions, typed `DecisionResult` behavior, retry behavior, active cancellation, abandon behavior, provider-session fallback, visibility/projection listing, history budget, recovery, and artifact references. | Yes | EVD-6, EVD-13, EVD-14, EVD-15, EVD-17, and EVD-18 approval. |
@@ -855,9 +871,11 @@ Complete
 | OBS-7 | Rollback drill record | Shows recipe-backed starts disabled and legacy/equivalent path preserved. | Jason Belmonti | Approve final activation or reject readiness. |
 | OBS-8 | Replay/versioning record | Shows saved-history replay status and selected Temporal versioning strategy for command-sequence changes. | Workflow implementation reviewer | Block merge or activation until current. |
 | OBS-9 | History-budget record | Shows compact artifact refs, history size trend, and continue-as-new or projection rebuild behavior. | Workflow operator | Disable queue-heavy runs if thresholds are exceeded. |
+| OBS-10 | Registry compatibility diagnostics | Explains direct, adapter-required, incompatible, and composite-workflow-as-step edges derived from workflow-unit contracts and adapter records. | Registry contract reviewer / operator | Block WP-2 or recipe publication until diagnostics match BEL-910 and VAL-19. |
+| OBS-11 | Loop guard and iteration record | Records loop ID, current iteration, guard outcome, carried state ref, terminal fallback, and history-budget behavior. | Workflow implementation reviewer / operator | Stop loop-capable recipes if guard or iteration evidence is missing or exceeds policy. |
 
 Operator actions:
-Start fake or live opt-in recipe runs, query run state, list queue items through the approved visibility/projection path, submit approval/rejection/abandon Updates and cancellation requests, generate triage packets, inspect artifacts and worktrees, replay saved histories after interpreter changes, inspect history-budget evidence, disable recipe-backed starts, and revert registry workflow records to a validated commit.
+Start fake or live opt-in recipe runs, query run state, list queue items through the approved visibility/projection path, submit approval/rejection/abandon Updates and cancellation requests, generate triage packets, inspect artifacts and worktrees, inspect registry compatibility diagnostics and loop iteration records, replay saved histories after interpreter changes, inspect history-budget evidence, disable recipe-backed starts, and revert registry workflow records to a validated commit.
 
 Monitoring window:
 For the MVP, monitor manually through the first live opt-in run and the next three local recipe-backed runs after activation. Any stale decision acceptance, protected-path mutation, missed activity cancellation, replay nondeterminism, queue-listing inconsistency, history-budget breach, or missing rollback path immediately suspends recipe-backed starts.
@@ -883,17 +901,18 @@ Risks:
 | RISK-7 | Retried mutating activities duplicate side effects. | High | Medium | Workflow implementation reviewer | Require idempotency keys, retryable/non-retryable taxonomy, disabled or bounded nested provider retries, and non-retryable classification for validation/auth/policy failures. | VAL-14 |
 | RISK-8 | Recipe-interpreter changes break replay for in-flight workflows. | High | Medium | Workflow implementation reviewer | Require saved-history replay and a patching, new workflow type, Worker Versioning, or termination/migration decision for command-sequence changes. | VAL-17 |
 | RISK-9 | Queue listing or artifact handling exceeds visibility, payload, or history limits. | Medium | Medium | Workflow implementation agent | Use Temporal Visibility search attributes or a rebuildable projection, keep large artifacts outside history, and define continue-as-new thresholds. | VAL-18 |
+| RISK-10 | Compatibility graph complexity turns registry into a runtime platform. | Medium | Medium | Registry contract reviewer | Keep registry as static compiler, derive metadata-only graph output, and defer any service until explicit service trigger conditions exist. | VAL-19, REV-2 |
+| RISK-11 | Looping recipes run indefinitely or hide unresolved review/fix findings. | High | Medium | Workflow implementation reviewer | Require typed guards, maximum iterations, terminal fallback, loop state, compact artifacts, and history-budget behavior. | VAL-20, VAL-17 |
 
 Open questions:
 
 Question mapping note:
-`SRC-1` Q-1 maps to this spec's Q-2 queue storage decision. `SRC-1` D-1 constrains this spec's Q-4 consensus-review execution-shape decision. This spec's Q-1, Q-3, and Q-5 are execution-specific gates added during planning.
+`SRC-1` Q-1 maps to this spec's Q-2 queue storage decision. `SRC-1` Q-2 maps to this spec's resolved Q-3/BEL-910 registry workflow record strategy. `SRC-1` D-1 constrains this spec's Q-4 consensus-review execution-shape decision. This spec's Q-1 and Q-5 are execution-specific gates added during planning.
 
 | ID | Question | Owner | Due date | Blocking? | Resolution path |
 | --- | --- | --- | --- | --- | --- |
 | Q-1 | Should existing durable human-loop MVP work land before this work, or should this execution absorb and supersede that scope? | Jason Belmonti | Before implementation starts | Yes | Record decision in EVD-0 and update project-management scope. |
 | Q-2 | Should queue listing use Temporal Visibility search attributes only, or a derived local projection? | Workflow implementation agent | Before MS-4 | No | Resolve during WP-6 by running the VAL-9 and VAL-18 50-item seed measurements and choosing the least stateful option that meets triage needs. |
-| Q-3 | Should registry workflow records be package kinds, catalog-only records, or another schema extension? | Registry contract reviewer | Before WP-2 starts | Yes for WP-2 | Decide at DP-3 with compatibility evidence. |
 | Q-4 | Should the first `consensus-review` adapter use the design-approved child-workflow fanout shape or the allowed single bounded step activity shape? | Jason Belmonti | Before WP-5 starts | Yes for WP-5 | Record the design-owner decision and validate the selected shape in VAL-8 before adapting the real skill. |
 | Q-5 | What exact typed output contract is required for each of the five happy-path skills? | Step adapter implementation agent drafts; Jason Belmonti approves with workflow and registry reviewer input | Before WP-5 starts | Yes for WP-5 | Draft an adapter contract table, record a Q-5 adapter contract decision artifact, review it against workflow and registry contracts, and validate with fake fixtures before real skills. |
 
@@ -924,12 +943,13 @@ Complete
 | OBJ-5 / Execution-profile enforcement | SURF-4, SURF-5 | PKG-6 | WP-4, WP-5 | MS-3, MS-4 | CTRL-3, CTRL-7 | VAL-7, VAL-9, VAL-10 | REV-4 | REL-3, OBS-4 | EVD-7, EVD-9, EVD-10 |
 | OBJ-6 / Worktree containment | SURF-5 | PKG-6 | WP-4, WP-7 | MS-3, MS-5 | CTRL-3 | VAL-7, VAL-10, VAL-12 | REV-4, REV-6 | REL-3, REL-5, OBS-5 | EVD-7, EVD-10, EVD-12 |
 | OBJ-7 / Triage packets | SURF-6, SURF-8 | PKG-7 | WP-6 | MS-4 | CTRL-3, CTRL-6, CTRL-10 | VAL-9, VAL-18 | REV-4, REV-5 | REL-4, OBS-2A, OBS-6, OBS-9 | EVD-9, EVD-18 |
+| OBJ-8 / Registry composition and bounded loops | SURF-1, SURF-2, SURF-7 | PKG-1, PKG-2 | WP-2 | MS-2 | CTRL-5, CTRL-11 | VAL-19, VAL-20 | REV-2 | OBS-10, OBS-11 | EVD-19, EVD-20 |
 | SRC-4 / Temporal SDK controls | SURF-3, SURF-4, SURF-6 | PKG-4, PKG-5, PKG-7 | WP-3, WP-5, WP-6, WP-7 | MS-3, MS-4, MS-5 | CTRL-2, CTRL-8, CTRL-9, CTRL-10 | VAL-5, VAL-6, VAL-14, VAL-15, VAL-17, VAL-18 | REV-3, REV-5, REV-6 | REL-1, REL-4, OBS-8, OBS-9 | EVD-5, EVD-6, EVD-14, EVD-15, EVD-17, EVD-18 |
 | SRC-6 / PM readiness | SURF-9 | N/A with PM rationale | WP-7 | Entry gate, MS-5 | CTRL-1, CTRL-6 | VAL-0, VAL-11 | REV-1, REV-6 | OBS-7 | EVD-0, EVD-11 |
 | SRC-2 / SRC-3 / NG-2 / Provider-session non-authority | SURF-3, SURF-4, SURF-10 | PKG-3, PKG-4, PKG-5 | WP-1, WP-3, WP-5 | MS-1, MS-3, MS-4 | CTRL-2, CTRL-6 | VAL-5, VAL-8, VAL-13 | REV-3, REV-5 | REL-1, OBS-1, OBS-3 | EVD-5, EVD-8, EVD-13 |
 | SRC-1 / SRC-3 / OBJ-4 / Recovery semantics | SURF-3, SURF-4, SURF-5 | PKG-3, PKG-4, PKG-6 | WP-3, WP-4 | MS-3 | CTRL-2, CTRL-3, CTRL-6, CTRL-8, CTRL-9 | VAL-14, VAL-15, VAL-17 | REV-3, REV-5 | OBS-3, OBS-4, OBS-8 | EVD-14, EVD-15, EVD-17 |
 | SRC-7 / Requested execution-spec artifact | SURF-8, SURF-9 | N/A with docs and PM rationale | WP-7 | Entry gate, MS-5 | CTRL-1, CTRL-6 | VAL-0, VAL-11 | REV-1, REV-6 | OBS-7 | EVD-0, EVD-11 |
-| SURF-7 / Validation test surface | SURF-7 | PKG-1, PKG-2, PKG-3, PKG-4, PKG-5, PKG-6, PKG-7 | WP-1, WP-2, WP-3, WP-4, WP-5, WP-6, WP-7 | Entry gate, MS-1, MS-2, MS-3, MS-4, MS-5 | CTRL-1, CTRL-6, CTRL-8, CTRL-9, CTRL-10 | VAL-0, VAL-1, VAL-2, VAL-3, VAL-4, VAL-5, VAL-6, VAL-7, VAL-8, VAL-9, VAL-10, VAL-11, VAL-12, VAL-13, VAL-14, VAL-15, VAL-16, VAL-17, VAL-18 | REV-1, REV-1A, REV-2, REV-3, REV-4, REV-5, REV-6 | REL-2, REL-3, REL-4, REL-5, OBS-7, OBS-8, OBS-9 | EVD-0, EVD-1, EVD-2, EVD-3, EVD-4, EVD-5, EVD-6, EVD-7, EVD-8, EVD-9, EVD-10, EVD-11, EVD-12, EVD-13, EVD-14, EVD-15, EVD-16, EVD-17, EVD-18 |
+| SURF-7 / Validation test surface | SURF-7 | PKG-1, PKG-2, PKG-3, PKG-4, PKG-5, PKG-6, PKG-7 | WP-1, WP-2, WP-3, WP-4, WP-5, WP-6, WP-7 | Entry gate, MS-1, MS-2, MS-3, MS-4, MS-5 | CTRL-1, CTRL-6, CTRL-8, CTRL-9, CTRL-10, CTRL-11 | VAL-0, VAL-1, VAL-2, VAL-3, VAL-4, VAL-5, VAL-6, VAL-7, VAL-8, VAL-9, VAL-10, VAL-11, VAL-12, VAL-13, VAL-14, VAL-15, VAL-16, VAL-17, VAL-18, VAL-19, VAL-20 | REV-1, REV-1A, REV-2, REV-3, REV-4, REV-5, REV-6 | REL-2, REL-3, REL-4, REL-5, OBS-7, OBS-8, OBS-9, OBS-10, OBS-11 | EVD-0, EVD-1, EVD-2, EVD-3, EVD-4, EVD-5, EVD-6, EVD-7, EVD-8, EVD-9, EVD-10, EVD-11, EVD-12, EVD-13, EVD-14, EVD-15, EVD-16, EVD-17, EVD-18, EVD-19, EVD-20 |
 | RISK-1 | SURF-4, SURF-5, SURF-6 | PKG-6, PKG-7 | WP-4, WP-6 | MS-3, MS-4 | CTRL-3, CTRL-7 | VAL-7, VAL-9, VAL-10 | REV-4 | REL-3, REL-4 | EVD-7, EVD-9, EVD-10 |
 | RISK-2 | SURF-3, SURF-6 | PKG-4, PKG-7 | WP-1, WP-3, WP-6 | MS-1, MS-3 | CTRL-6 | VAL-1, VAL-6, VAL-13, VAL-15 | REV-5 | OBS-1, OBS-3 | EVD-1, EVD-6, EVD-13, EVD-15 |
 | RISK-3 | SURF-1, SURF-2, SURF-4 | PKG-1, PKG-2, PKG-5 | WP-2, WP-5 | MS-2, MS-4 | CTRL-5 | VAL-2, VAL-4, VAL-8 | REV-2, REV-4 | REL-2, REL-3 | EVD-2, EVD-4, EVD-8 |
@@ -939,9 +959,11 @@ Complete
 | RISK-7 | SURF-4, SURF-5 | PKG-5, PKG-6 | WP-3, WP-4 | MS-3 | CTRL-9 | VAL-14, VAL-15 | REV-3, REV-5 | OBS-3, OBS-4 | EVD-14, EVD-15 |
 | RISK-8 | SURF-3 | PKG-4 | WP-3, WP-7 | MS-3, MS-5 | CTRL-8 | VAL-17 | REV-3, REV-6 | REL-1, REL-5, OBS-8 | EVD-17 |
 | RISK-9 | SURF-3, SURF-6, SURF-8 | PKG-4, PKG-7 | WP-3, WP-6, WP-7 | MS-4, MS-5 | CTRL-10 | VAL-18 | REV-5, REV-6 | REL-4, REL-5, OBS-2A, OBS-9 | EVD-18 |
+| RISK-10 | SURF-1, SURF-2 | PKG-1, PKG-2 | WP-2 | MS-2 | CTRL-5, CTRL-11 | VAL-19 | REV-2 | OBS-10 | EVD-19 |
+| RISK-11 | SURF-1, SURF-2, SURF-3 | PKG-1, PKG-2, PKG-4 | WP-2, WP-3 | MS-2, MS-3 | CTRL-8, CTRL-11 | VAL-20, VAL-17 | REV-2, REV-3 | OBS-9, OBS-11 | EVD-20, EVD-17 |
 | Q-1 / Entry sequencing | SURF-9, SURF-10 | PKG-4 | WP-1, WP-3 | Entry gate, MS-1 | CTRL-1 | VAL-0 | REV-1 | REL-1 | EVD-0 |
 | Q-2 / Queue storage and index decision | SURF-6, SURF-8 | PKG-7 | WP-6 | MS-4 | CTRL-1, CTRL-6, CTRL-10 | VAL-9, VAL-18 | REV-5 | OBS-2, OBS-2A, OBS-6 | EVD-9, EVD-18 |
-| Q-3 / Registry record strategy | SURF-1, SURF-2 | PKG-1, PKG-2 | WP-2 | MS-2 | CTRL-5 | VAL-2, VAL-4 | REV-2 | REL-2 | EVD-2, EVD-4 |
+| Resolved Q-3 / BEL-910 registry record strategy | SURF-1, SURF-2, SURF-7, SURF-9 | PKG-1, PKG-2 | WP-2 | MS-2 | CTRL-5, CTRL-11 | VAL-2, VAL-4, VAL-16, VAL-19, VAL-20 | REV-2 | OBS-10, OBS-11 | BEL-910 approval of D-5, EVD-2, EVD-4, EVD-16, EVD-19, EVD-20 |
 | Q-4 / Consensus-review execution shape | SURF-3, SURF-4, SURF-6, SURF-8 | PKG-4, PKG-5, PKG-6 | WP-5 | MS-4 | CTRL-1, CTRL-3 | VAL-8 | REV-1A, REV-4 | REL-3, OBS-3 | Q-4 decision record, EVD-8 |
 | Q-5 / Skill adapter output contracts | SURF-4, SURF-6, SURF-8 | PKG-5, PKG-6 | WP-5 | MS-4 | CTRL-1, CTRL-3 | VAL-8 | REV-1A, REV-4 | REL-3, OBS-3 | Q-5 adapter contract decision record, EVD-8 |
 
@@ -951,7 +973,7 @@ Complete
 ## 18. Final Execution Gate
 
 Entry gate:
-Not satisfied. Required before WP-1 starts: Jason approves `SRC-1`; Jason approves this execution spec or conditionally approves it for WP-1; Q-1 is resolved; a Linear execution-control issue or project exists with required headings and traceability; and an independent capability-policy reviewer is assigned. Q-3 and DEP-3 are required before WP-2 starts, not before the fake proving slice.
+Not satisfied. Required before WP-1 starts: Jason approves `SRC-1`; Jason approves this execution spec or conditionally approves it for WP-1; Q-1 is resolved; a Linear execution-control issue or project exists with required headings and traceability; and an independent capability-policy reviewer is assigned. Q-3 is resolved by BEL-910/D-5; DEP-3 is still required before WP-2 starts, not before the fake proving slice.
 
 Milestone approval gate:
 MS-1 through MS-5 are fully specified with due points, verifiers, manual verification steps, required evidence, review gates, approval decisions, and failure paths. No milestone may be treated as approved until its named verifier records approval evidence.

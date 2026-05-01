@@ -12,9 +12,9 @@
 | Reviewers | Jason Belmonti; Codex implementation reviewer; independent capability-policy reviewer |
 | Decision owner | Jason Belmonti |
 | Target milestone or release | Composable workflow MVP |
-| Last updated | 2026-04-30 |
+| Last updated | 2026-05-01 |
 | Related docs | Current roadmap conversation on 2026-04-29; `docs/hello-claudex-mvp.md`; `agent-config-registry/docs/zero-dollar-agent-config-registry-design.md`; `agent-config-registry/docs/zero-dollar-agent-config-registry-execution.md` |
-| Related tickets | None |
+| Related tickets | BEL-910 |
 
 ## 0. Executive Summary
 
@@ -25,7 +25,7 @@ Problem summary:
 Jason is unable to operate the desired long-running multi-skill agent workflow as a composable, low-context-switching system because workflow ordering, gate handling, approval packaging, and agent runtime constraints are not represented as durable typed objects, resulting in manual orchestration, unreliable review-context restriction, and human approvals that cannot be triaged across runs.
 
 Proposed outcome:
-A Temporal-backed agent workflow control plane executes pinned declarative recipes, resolves versioned step execution profiles from `agent-config-registry`, turns blocking gates into durable approval queue items, and lets a read-only triage agent package pending decisions for efficient human review.
+A Temporal-backed agent workflow control plane executes pinned declarative recipes, resolves versioned step execution profiles from `agent-config-registry`, uses registry-derived compatibility metadata to prove which workflow units compose, turns blocking gates into durable approval queue items, and lets a read-only triage agent package pending decisions for efficient human review.
 
 Why now:
 The current project has already proved the bounded Claudex turn boundary, durable workflow state, interactive human input, and worktree-friendly execution model; the next architectural decision is whether to harden those primitives into a reusable composable protocol before more one-off workflows accumulate.
@@ -33,7 +33,7 @@ The current project has already proved the bounded Claudex turn boundary, durabl
 Top risks or unknowns:
 - RISK-1: Execution profile enforcement could be incomplete, allowing read-only review or triage steps to mutate protected paths or access unnecessary tools.
 - RISK-2: Queue item identity or resume correlation could be wrong, causing an approval to resume the wrong workflow, step, or worktree.
-- RISK-3: Declarative recipes could become prompt-shaped blobs instead of typed contracts, preventing reliable composition, validation, and triage.
+- RISK-3: Declarative recipes could become prompt-shaped or compatibility-blind blobs instead of typed contracts, preventing reliable composition, bounded loops, validation, and triage.
 
 Section status:
 Complete
@@ -49,7 +49,7 @@ Affected actors or systems:
 Jason as operator and decision owner; Codex and Claudex agent runtimes; `workflow-temporal`; `agent-config-registry`; local git worktrees; Linear and GitHub context sources; Temporal server and UI; local filesystem install targets and working directories.
 
 Current-state baseline:
-Estimated current baseline as of 2026-04-29: 1 hard-coded Temporal agent workflow (`agent.helloClaudex`), 2 signals (`submitHumanInput`, `cancelRun`), 1 query (`getHelloClaudexState`), 5 desired happy-path skills, at least 3 gate classes (planning/decomposition, human approval, review rejection), and 2 repositories that must coordinate (`workflow-temporal` and `agent-config-registry`).
+Estimated current baseline as of 2026-05-01: 1 hard-coded Temporal agent workflow (`agent.helloClaudex`), 2 signals (`submitHumanInput`, `cancelRun`), 1 query (`getHelloClaudexState`), 5 desired happy-path skills, at least 3 gate classes (planning/decomposition, human approval, review rejection), 0 explicit workflow-unit compatibility graph records, 0 typed loop/guard transition fixtures, and 2 repositories that must coordinate (`workflow-temporal` and `agent-config-registry`).
 
 Evidence or source:
 Direct roadmap conversation on 2026-04-29; `docs/hello-claudex-mvp.md` lines 5-12, 21-23, 181-194, and 215-223; `src/workflows/hello-claudex-contract.ts`; `src/workflows/hello-claudex.ts`; `agent-config-registry/docs/zero-dollar-agent-config-registry-design.md`; `agent-config-registry/src/agent-config-registry/contracts/packages.ts`; `agent-config-registry/src/agent-config-registry/contracts/targets.ts`.
@@ -72,6 +72,7 @@ Complete
 | OBJ-3 | Use `agent-config-registry` as the versioned source for recipes, step definitions, `execution-profile` records, and capability policy metadata. | Registry review verifies cataloged execution profile records can be pinned by digest or commit and validated before use. |
 | OBJ-4 | Convert human-required gates into durable approval queue items that can be triaged across workflow runs. | Queue review verifies pending gates can be listed, grouped, approved, rejected, or cancelled without reading provider-local session state. |
 | OBJ-5 | Enforce narrow per-step execution profiles, especially read-only review and triage profiles. | Security/capability review verifies consensus review and triage cannot mutate protected worktree paths or receive unnecessary MCP/tool access. |
+| OBJ-6 | Define a registry-backed composition model that can prove direct, adapter-required, incompatible, and looping workflow-unit relationships before runtime. | BEL-910 and MVP contract review verify registry validation and catalog output can explain composition decisions without prompt inference. |
 | NG-1 | This effort will not build a hosted multi-user workflow product. | Out of scope for the composable workflow MVP. |
 | NG-2 | This effort will not replace Temporal with a custom scheduler. | Temporal remains the durable orchestration runtime for this project. |
 | NG-3 | This effort will not make provider-native session IDs authoritative workflow state. | Provider sessions remain best-effort resume hints only. |
@@ -116,6 +117,8 @@ Complete
 | CON-11 | Constraint | Cross-run queue discovery must use Temporal Visibility search attributes or a durable projection while workflow histories store compact artifact references rather than large review payloads. | Querying every workflow does not scale, and Temporal histories have payload and history-size limits. | VAL-18 verifies listing performance, compact histories, and projection rebuild behavior. |
 | CON-12 | Constraint | Long-running agent and tool activities must heartbeat, expose a heartbeat timeout, and propagate cancellation into provider calls or child processes. | Temporal delivers activity cancellation through heartbeats. | VAL-13 verifies heartbeat-backed cancellation and provider abort behavior. |
 | CON-13 | Constraint | Recipe interpreter changes that alter Temporal command sequences require saved-history replay testing and an explicit patching, workflow-type, or Worker Versioning decision. | Running workflows replay through old event histories after worker changes. | VAL-2 and VAL-19 verify replay compatibility and versioning controls. |
+| CON-14 | Constraint | `agent-config-registry` is a static configuration compiler for the MVP, not a runtime workflow-state service or always-on microservice. | Keeps registry scope aligned with the zero-dollar/no-server posture while allowing schema complexity to grow behind a compiler boundary. | BEL-910, D-3, and VAL-12 verify no hosted registry service is introduced. |
+| CON-15 | Constraint | Compatibility edges, adapter requirements, and loop legality must be derived from typed workflow-unit contracts and recipe transition rules rather than authored as prompt guidance. | Composition must be machine-checkable before Temporal starts a run. | VAL-21 and VAL-22 verify graph and loop fixtures. |
 | ASM-1 | Assumption | The first implementation can use local Temporal, local filesystem artifacts, and local registry checkouts before a hosted API exists. | Current `workflow-temporal` and registry designs are local-first. | Validate during MVP smoke test before expanding to remote triggers. |
 | ASM-2 | Assumption | A typed contract layer around existing skills can be introduced without rewriting each skill body immediately. | Existing skills already have clear workflows and output expectations, but not formal machine contracts. | VAL-1 starts with adapter records for the five known happy-path steps. |
 | ASM-3 | Assumption | Queue triage can initially use heuristic grouping by repo, workflow recipe, gate type, risk, and age. | User asked for context-switch minimization or another heuristic. | VAL-9 compares generated grouping against operator review on a seed queue. |
@@ -143,6 +146,9 @@ Complete
 | REQ-14 | Performance | Should | Queue triage shall produce review packets for 50 pending items within 5 seconds on the local development machine. | Morning review must remain operationally useful for accumulated gates. | VAL-9 |
 | REQ-15 | Operability | Must | The system shall keep Temporal workflow payloads compact by storing large logs, summaries, review packets, diffs, and provider transcripts outside workflow history and passing only artifact references through workflow state. | Temporal payload and history limits make large in-history agent artifacts unsafe. | VAL-18 |
 | REQ-16 | Compatibility | Must | The system shall require replay compatibility tests and a Temporal versioning decision before any recipe-interpreter change that adds, removes, reorders, or changes activity or child-workflow commands. | Command-sequence changes can block in-flight workflows during replay. | VAL-2, VAL-19 |
+| REQ-17 | Functional | Must | The registry shall define a workflow-unit contract model shared by primitive steps and composite recipes, including input contracts, output contracts, gate contracts, artifact contracts, side-effect class, and execution-profile constraints. | Composite workflows must be reusable as steps without losing typed boundaries. | VAL-21 |
+| REQ-18 | Functional | Must | The registry validator or catalog builder shall derive a compatibility graph that classifies producer-to-consumer relationships as `compatible`, `adapter_required`, or `incompatible` with machine-readable reasons. | Operators and implementation agents need to know which workflows compose before runtime. | VAL-21 |
+| REQ-19 | Reliability | Must | Recipe transitions that loop shall declare typed guard predicates, loop identity, carried state, maximum iterations, terminal fallback, and history-budget behavior. | Review/fix/review and other loops must be deterministic, bounded, and recoverable. | VAL-22 |
 
 Section status:
 Complete
@@ -155,7 +161,9 @@ Complete
 | Gate queue proof | Current baseline is `waiting_for_input` inside one workflow and no cross-run queue. | A fake-run smoke test creates at least 3 queue items across at least 2 workflow runs, lists them through the chosen visibility path, and resumes the correct blocked step by decision Update result. | MVP smoke test. | OBJ-2, OBJ-4, REQ-6, REQ-7, REQ-11 |
 | Capability containment | Current baseline has no registry-enforced read-only review execution profile. | A consensus review step cannot write to protected worktree paths in an automated negative test. | Capability-policy review before implementation acceptance. | OBJ-5, REQ-4, REQ-10 |
 | Triage usefulness | Current baseline is manual context switching across gates. | A triage run groups 50 seed queue items into review packets in under 5 seconds and preserves source links for each item. | MVP operator review. | OBJ-4, REQ-8, REQ-14 |
+| Composition graph proof | Current baseline is 0 explicit compatibility graph records or fixtures. | Registry validation or catalog generation explains one compatible edge, one adapter-required edge, one incompatible edge, and one bounded loop recipe. | BEL-910 / MS-2 registry review. | OBJ-6, REQ-17, REQ-18, REQ-19 |
 | Kill criterion: prompt-shaped recipes | Current baseline depends on human prompt conventions. | Stop or redesign if a recipe cannot be validated without reading free-form prompt prose. | Before implementation proceeds beyond schema work. | REQ-1, REQ-3 |
+| Kill criterion: unbounded or implicit loops | Current baseline has no typed loop semantics. | Stop or redesign if a loop can be expressed without max iterations, terminal fallback, typed guard predicates, and history-budget behavior. | Before enabling looping recipes. | REQ-19 |
 | Kill criterion: unenforceable execution profiles | Current baseline has no execution profile enforcement boundary. | Stop or redesign if the runner cannot prove read-only execution profiles block protected-path writes before agent execution. | Before consensus-review automation is allowed. | REQ-4, REQ-10 |
 
 Section status:
@@ -171,7 +179,7 @@ Complete
 ## 7. System Context and External Interfaces
 
 System boundary:
-The system includes declarative workflow recipe records, registry validation and cataloging for recipes and execution profiles, a Temporal recipe interpreter, bounded agent step activities, durable approval queue state, artifact references, local worktree allocation, and a read-only triage agent. It excludes hosted multi-user workflow UI, public marketplace protocols, and provider-native session storage.
+The system includes declarative workflow recipe records, workflow-unit contracts, explicit adapter definitions, registry validation and cataloging for recipes, compatibility graph metadata, execution profiles, a Temporal recipe interpreter, bounded agent step activities, durable approval queue state, artifact references, local worktree allocation, and a read-only triage agent. It excludes hosted multi-user workflow UI, public marketplace protocols, provider-native session storage, and an always-on registry microservice for the MVP.
 
 External actors and systems:
 Jason as operator; Codex/Claudex agent runtimes; Temporal server and worker; `agent-config-registry`; Linear and GitHub context systems; local filesystem and git worktrees; local CLI or API callers; Temporal UI.
@@ -181,7 +189,7 @@ Boundary-1 exists between versioned registry configuration and runtime execution
 
 | Interface | Owner | Consumer or dependency | Inputs | Outputs |
 | --- | --- | --- | --- | --- |
-| Registry recipe catalog | `agent-config-registry` | Workflow starter and recipe resolver | Recipe records, step definitions, execution profiles, validation metadata | Pinned recipe snapshot and execution profile identifiers |
+| Registry recipe catalog | `agent-config-registry` | Workflow starter and recipe resolver | Recipe records, workflow-unit contracts, step definitions, adapter definitions, execution profiles, validation metadata | Pinned recipe snapshot, execution profile identifiers, and derived compatibility graph diagnostics |
 | Temporal workflow API | `workflow-temporal` | CLI, API caller, Temporal UI | Workflow start request, approval/rejection/abandonment decision Updates, cancellation requests or signals | Run state, step state, gate state, terminal result, typed `DecisionResult` |
 | Agent step activity | `workflow-temporal` activity runtime | Claudex/Codex/Claude providers | Step request, execution profile, worktree path, prior summary, human input | Step result, gate request, artifact references, provider session hint |
 | Approval queue query | `workflow-temporal` | Operator CLI or triage agent | Queue filters, recipe IDs, repo IDs, gate status, visibility search attributes | Pending queue item summaries and artifact references |
@@ -203,11 +211,14 @@ Complete
 | FLOW-4 | Morning triage starts. | At least one pending queue item exists. | The triage agent returns grouped review packets ordered by declared heuristic and performs no writes to workflow state, registry state, or worktrees. | REQ-8, REQ-11, REQ-14 |
 | FLOW-5 | Consensus review step runs. | The recipe step references the read-only consensus review execution profile. | The step runs with review-only skills/tools and protected-path write attempts fail before any worktree mutation is committed. | REQ-4, REQ-10 |
 | FLOW-6 | A registry execution profile is updated while a workflow is running. | The workflow already stored a pinned recipe snapshot. | The running workflow continues with the pinned snapshot and new runs may use the newer execution profile after validation. | REQ-2, REQ-13 |
+| FLOW-7 | Registry compatibility is evaluated before a recipe is published. | Workflow-unit contracts, adapter definitions, execution profiles, and recipe transitions are available in registry content. | The validator or catalog builder reports direct compatible edges, adapter-required edges, incompatible edges, and rejected loop transitions with reasons. | REQ-17, REQ-18, REQ-19 |
+| FLOW-8 | A review/fix/review loop runs. | The recipe declares a loop ID, typed guard predicates over review and fix outputs, carried state, maximum iterations, terminal fallback, and history-budget policy. | The workflow repeats only while the guard remains true and the iteration limit is not reached; approval, max-iteration, or failure exits are recorded as typed outcomes. | REQ-19, REQ-15, REQ-16 |
 | FUNC-1 | Recipe validation is requested. | Registry content is available locally or from an accepted commit. | The caller receives pass/fail validation with specific errors for missing step contracts, execution profile references, gate policies, or schema versions. | REQ-1, REQ-3, REQ-13 |
 | FUNC-2 | Run state is queried. | A workflow execution exists. | The caller receives current run status, active step, gate state, queue item IDs, artifacts, worktree path, execution profile identifiers, and current visibility metadata. | REQ-11 |
 | FUNC-3 | Queue items are listed. | Queue state exists in workflow state, Temporal Visibility, or a durable projection. | The caller receives open, approved, rejected, cancelled, abandoned, and resolved item summaries with resume correlation metadata plus any derived review packet references without loading full provider sessions or large artifacts. | REQ-6, REQ-11, REQ-15 |
 | FUNC-4 | A read-only execution profile is applied. | The step declares a read-only execution profile. | The activity runner refuses write-capable tools and rejects protected-path write attempts before they affect the active worktree. | REQ-4, REQ-10 |
 | FUNC-5 | Workflow visibility is rebuilt or refreshed. | Workflow histories, artifact references, and visibility metadata are available. | The caller can rebuild the queue projection from workflow-owned state and artifacts, and listing 50 pending items still meets the local SLA. | REQ-11, REQ-14, REQ-15 |
+| FUNC-6 | A workflow unit is inspected for reuse. | A primitive step or composite recipe record exists. | The caller receives exported input, output, gate, artifact, side-effect, and execution-profile constraints without loading free-form prompt bodies. | REQ-17, REQ-18 |
 
 Section status:
 Complete
@@ -227,11 +238,14 @@ Recipe state transitions are `draft` -> `validated` -> `published` -> `pinned sn
 | Fault-6 | A non-mutating step fails with a retryable provider or startup error. | The workflow retries according to the pinned retry policy, while the activity disables nested provider-client retries and records each Temporal attempt without changing protected paths. | Safe retries are limited to non-mutating execution profiles unless idempotency is explicitly declared. | REQ-12 |
 | Fault-7 | Operator abandons a blocked workflow. | The workflow accepts an abandonment Update, records `abandoned`, closes the queue item, returns a typed `DecisionResult`, and rejects later decisions for that gate revision. | Abandoned gates cannot resume after operator intent changes. | REQ-12, FUNC-3 |
 | Fault-8 | Queue or review context exceeds Temporal payload or history budget. | The activity stores large data as external artifacts, returns only artifact references, and the workflow either continues with compact state or continues-as-new when history limits approach the configured threshold. | Large agent artifacts do not pollute workflow history. | REQ-11, REQ-15 |
+| Fault-9 | A looping recipe reaches its maximum iteration count before its success guard is satisfied. | The workflow follows the declared terminal fallback, records loop state and unresolved outputs as artifacts or queue context, and does not continue scheduling loop steps. | Loops remain bounded and operator-visible. | REQ-19, REQ-15 |
 | Misuse-1 | A recipe assigns an implementation-write execution profile to a consensus review step. | Registry validation fails or capability-policy review blocks publication. | Review steps must use read-only capability boundaries. | REQ-4, REQ-10, FUNC-1 |
 | Misuse-2 | A triage agent attempts to approve a queue item. | The system rejects the action because triage profile lacks approval-Update authority. | Human approval remains explicit. | REQ-7, REQ-8 |
 | Misuse-3 | A recipe uses free-form prompt text as the only downstream output. | Validation fails because the step lacks typed output and gate contracts. | Composition depends on typed contracts. | REQ-1, REQ-3 |
 | Misuse-4 | A recipe or runner assigns agent/provider/tool execution to a Local Activity. | Validation or implementation review blocks the change because agent execution requires regular durable activities or child workflows. | Long-running and side-effectful agent work must not rely on Local Activity durability tradeoffs. | REQ-5, REQ-12 |
 | Misuse-5 | A mutating activity declares automatic retry without idempotency keys and retry error taxonomy. | Registry validation or activity-runner startup fails closed. | Retries must not duplicate external or filesystem side effects. | REQ-12 |
+| Misuse-6 | A recipe tries to compose two workflow units whose contracts are incompatible without an adapter. | Registry validation fails and the compatibility diagnostics name the missing or incompatible contract fields. | Composition cannot depend on prompt inference. | REQ-17, REQ-18 |
+| Misuse-7 | A recipe declares a loop without a maximum iteration count, terminal fallback, or typed guard predicate. | Registry validation fails before publication or workflow start. | Looping composition is bounded and deterministic. | REQ-19 |
 
 Section status:
 Complete
@@ -258,6 +272,9 @@ The MVP is local-first. Querying an active run or pending queue should complete 
 | ACC-13 | Fifty pending gate workflows are listed for triage. | Queue items are discoverable through Temporal Visibility search attributes or the durable projection within 2 seconds, and the projection can be rebuilt from workflow-owned state plus artifact references. | REQ-11, REQ-14, REQ-15, FUNC-5 |
 | ACC-14 | A recipe-interpreter change adds, removes, reorders, or changes an activity or child-workflow command. | Saved-history replay tests fail until a patching, workflow-type, Worker Versioning, or termination/migration decision is documented and implemented. | REQ-16 |
 | ACC-15 | A mutating activity with retry enabled is executed twice by Temporal after a worker failure. | The activity uses a stable idempotency key, duplicate side effects are avoided or detected, and retryable versus non-retryable errors follow the pinned taxonomy. | REQ-12 |
+| ACC-16 | Registry catalog generation evaluates compatibility fixtures. | The output classifies one direct edge, one adapter-required edge, one incompatible edge, and one composite-workflow-as-step edge with reasons. | REQ-17, REQ-18, FLOW-7 |
+| ACC-17 | A review/fix/review looping recipe is validated. | Validation passes only when typed guards, loop state, maximum iterations, terminal fallback, and compact artifact behavior are declared. | REQ-19, FLOW-8 |
+| ACC-18 | A looping recipe omits max iterations or terminal fallback. | Validation fails before the recipe can be published or started. | REQ-19, Misuse-7 |
 
 Section status:
 Complete
@@ -282,6 +299,9 @@ Complete
 | REQ-14 | FLOW-4 | ACC-6 | Triage performance has a local bound. |
 | REQ-15 | FUNC-3, FUNC-5 | ACC-13 | Queue and artifact handling stay within Temporal history and payload budgets. |
 | REQ-16 | FLOW-1, FLOW-6 | ACC-14 | Interpreter evolution is gated by replay compatibility and versioning controls. |
+| REQ-17 | FLOW-7, FUNC-6 | ACC-16 | Primitive steps and composite workflows share an exported composition interface. |
+| REQ-18 | FLOW-7, FUNC-6 | ACC-16 | Compatibility is derived from typed contracts and explained before runtime. |
+| REQ-19 | FLOW-8 | ACC-17, ACC-18 | Looping composition is explicit, bounded, and deterministic. |
 
 Section status:
 Complete
@@ -296,16 +316,16 @@ Complete
 ## 12. Architecture Overview
 
 Architecture summary:
-The architecture is a local-first control plane with `agent-config-registry` publishing validated declarative workflow recipes and execution profiles, and `workflow-temporal` executing a pinned recipe snapshot through a deterministic Temporal interpreter. Agent execution remains inside bounded regular activities or child workflows. Blocking outcomes produce durable queue items and visibility metadata. Human decisions are submitted through Temporal Updates that return typed results. A read-only triage agent reads pending queue items and emits review packets for the operator.
+The architecture is a local-first control plane with `agent-config-registry` acting as a static configuration compiler that publishes validated declarative workflow recipes, workflow-unit contracts, adapter definitions, derived compatibility graph diagnostics, and execution profiles, while `workflow-temporal` executes a pinned recipe snapshot through a deterministic Temporal interpreter. Agent execution remains inside bounded regular activities or child workflows. Blocking outcomes produce durable queue items and visibility metadata. Human decisions are submitted through Temporal Updates that return typed results. A read-only triage agent reads pending queue items and emits review packets for the operator.
 
 Major components and boundaries:
-Major components are the registry recipe/execution-profile schema, registry validator/catalog, recipe resolver, Temporal recipe interpreter, step activity runner, execution profile enforcement layer, worktree manager, artifact store, approval queue model, decision Update handler, visibility/projection model, replay/versioning gate, and queue triage packager. Boundaries are registry config versus execution state, deterministic Temporal workflow code versus side-effectful activities, read-only review/triage profiles versus write-capable implementation profiles, queue presentation versus approval-Update authority, compact workflow state versus large artifact storage, and run worktree versus source repository.
+Major components are the registry recipe/execution-profile schema, workflow-unit contract schema, adapter-definition schema, compatibility graph builder, registry validator/catalog, recipe resolver, Temporal recipe interpreter, step activity runner, execution profile enforcement layer, worktree manager, artifact store, approval queue model, decision Update handler, visibility/projection model, replay/versioning gate, and queue triage packager. Boundaries are registry config versus execution state, deterministic Temporal workflow code versus side-effectful activities, read-only review/triage profiles versus write-capable implementation profiles, queue presentation versus approval-Update authority, compact workflow state versus large artifact storage, and run worktree versus source repository.
 
 Deployment or runtime placement:
 Registry validation and catalog generation run in the sibling `agent-config-registry` repository. Temporal workflows, activities, queue state, Updates, queries, and visibility/projection maintenance run in `workflow-temporal`. Claudex/Codex/Claude execution runs only from Node regular activity processes or child-workflow branches that schedule regular activities. Worktree and artifact files live on the local filesystem. Triage runs as a read-only activity, CLI command, or separate agent invocation using queue visibility and query output.
 
 Architecture rationale:
-This satisfies REQ-1 through declarative recipe records, REQ-2 through pinned snapshots, REQ-5 through the existing bounded activity boundary, REQ-6 and REQ-7 through queue items plus decision Updates, REQ-8 through read-only packet generation, REQ-10 through execution profile enforcement, REQ-15 through compact artifact-reference state, and REQ-16 through replay and versioning controls.
+This satisfies REQ-1 through declarative recipe records, REQ-2 through pinned snapshots, REQ-5 through the existing bounded activity boundary, REQ-6 and REQ-7 through queue items plus decision Updates, REQ-8 through read-only packet generation, REQ-10 through execution profile enforcement, REQ-15 through compact artifact-reference state, REQ-16 through replay and versioning controls, and REQ-17 through REQ-19 through workflow-unit contracts, derived compatibility graph diagnostics, explicit adapters, and bounded loop/guard transition rules.
 
 Section status:
 Complete
@@ -314,8 +334,8 @@ Complete
 
 | ID | Mechanism | Component or owner | Responsibility | Related behaviors |
 | --- | --- | --- | --- | --- |
-| TECH-1 | `WorkflowRecipe` schema | `agent-config-registry` | Define recipe ID, version, steps, transitions, gate policies, execution profile references, and supported schema version. | FUNC-1, FLOW-1 |
-| TECH-2 | `StepDefinition` contract records | `agent-config-registry` | Define stable step input, output, artifact, and gate contract metadata. | FUNC-1, FLOW-2 |
+| TECH-1 | `WorkflowRecipe` schema | `agent-config-registry` | Define a non-installable `workflow-recipe` registry package kind with recipe ID, version, steps, transitions, exported workflow-unit contract, gate policies, execution profile references, and supported schema version. | FUNC-1, FLOW-1 |
+| TECH-2 | `StepDefinition` contract records | `agent-config-registry` | Define a non-installable `step-definition` registry package kind with stable step input, output, artifact, gate, side-effect, and execution-profile contract metadata. | FUNC-1, FLOW-2 |
 | TECH-3 | `ExecutionProfile` and capability policy schema | `agent-config-registry` | Define a new non-installable `execution-profile` registry record, distinct from the existing sync `profile` package kind, with allowed skills, tools, MCP access, provider options, protected-path policy, approval-Update authority, retry class, idempotency-key template, retry error taxonomy, and enforcement mode. | FUNC-1, FUNC-4, FLOW-5 |
 | TECH-4 | Recipe resolver and snapshot builder | `workflow-temporal` client or starter | Resolve registry content to an immutable recipe snapshot before starting a run. | FLOW-1, FLOW-6 |
 | TECH-5 | Temporal recipe interpreter | `workflow-temporal` workflow code | Execute step graph deterministically from stored snapshot, step states, decision Update events, search attributes, and compact artifact references. | FLOW-1, FLOW-3 |
@@ -329,6 +349,10 @@ Complete
 | TECH-13 | Visibility and history-budget controller | `workflow-temporal` workflow code and activity runtime | Upsert queue-related search attributes, maintain or rebuild a durable projection if selected, enforce compact payload contracts, and continue-as-new or fail closed when history-budget thresholds are reached. | FUNC-3, FUNC-5 |
 | TECH-14 | Activity retry and idempotency policy | Activity runtime and registry validation | Disable nested provider-client retries, classify retryable and non-retryable failures, require idempotency keys for retryable mutating activities, and record attempt metadata. | Fault-6, Misuse-5 |
 | TECH-15 | Replay and versioning gate | `workflow-temporal` tests and release checklist | Run saved-history replay tests and require a patching, workflow-type, Worker Versioning, or termination/migration decision for command-sequence changes. | FLOW-6, ACC-14 |
+| TECH-16 | `WorkflowUnitContract` schema | `agent-config-registry` | Define the shared exported interface embedded by primitive step definitions and composite workflow recipes: input, output, gate, artifact, side-effect, outcome, and execution-profile constraints. | FLOW-7, FUNC-6 |
+| TECH-17 | Adapter definition records | `agent-config-registry` | Define a non-installable `adapter-definition` registry package kind that declares typed transforms from one workflow-unit output contract to another workflow-unit input contract without hiding conversion inside free-form prompt text. | FLOW-7, Misuse-6 |
+| TECH-18 | Compatibility graph builder | `agent-config-registry` catalog builder | Derive direct, adapter-required, and incompatible composition edges from workflow-unit contracts, adapter definitions, artifact requirements, gate coverage, and execution-profile constraints, then emit diagnostics in catalog output. | FLOW-7, ACC-16 |
+| TECH-19 | Guarded loop transition model | `agent-config-registry` and `workflow-temporal` | Represent typed guard predicates, loop IDs, carried loop state, maximum iterations, terminal fallback, and history-budget behavior in recipe snapshots and deterministic interpreter state. | FLOW-8, ACC-17, ACC-18 |
 
 Section status:
 Complete
@@ -337,9 +361,13 @@ Complete
 
 | Change | Type | Compatibility impact | Reversibility | Mitigation |
 | --- | --- | --- | --- | --- |
-| Add `workflow-recipe` registry records | Schema / Config | New registry package kind or catalog record type must be ignored by older registry clients or gated by schema version. | Reversible | Use schema versioning, feature flags, and validation that rejects unsupported recipe versions. |
-| Add `step-definition` records | Schema / Config | Existing skill packages remain unchanged; step definitions reference skills and adapter contracts. | Reversible | Keep step definitions additive and validate references before publication. |
+| Add `workflow-recipe` registry records | Schema / Config | New non-installable registry package kind must be ignored by older registry clients or gated by schema version. | Reversible | Use schema versioning, feature flags, and validation that rejects unsupported recipe versions. |
+| Add `step-definition` records | Schema / Config | New non-installable registry package kind references existing skills and adapter contracts without changing skill package content. | Reversible | Keep step definitions additive and validate references before publication. |
 | Add `execution-profile` registry records | Schema / Config | Existing `profile` package kind remains a sync manifest for install targets; `execution-profile` is a separate non-installable record kind used only for agent runtime capability policy. | Reversible | Add schema-versioned catalog support for `execution-profile`, reject recipes that reference sync profiles as execution profiles, and keep existing package-kind compatibility tests unchanged except for explicit unsupported-kind behavior. |
+| Add embedded `workflowUnitContract` schema fields | Schema / Config | Primitive steps and composite recipes gain exported typed contracts without creating standalone contract source records for the MVP. | Reversible | Keep the contract schema additive and pin resolved snapshots by digest. |
+| Add `adapter-definition` records | Schema / Config | New non-installable registry package kind lets recipes use explicit typed transforms between otherwise incompatible workflow units. | Reversible | Treat adapters as optional records; validation rejects recipes that require an adapter when none is declared. |
+| Add derived compatibility graph catalog metadata | Catalog | Catalog output includes composition diagnostics derived from source records; it is rebuildable and not the source of truth. | Reversible | Regenerate from source records and keep graph output metadata-only. |
+| Add guarded loop transition fields | Schema / Config | `workflow-recipe` transition schema can express bounded loops; existing non-loop recipes remain valid. | Reversible | Validation rejects loops missing guard predicates, max iterations, terminal fallback, or history-budget policy. |
 | Add recipe snapshot to workflow input/state | API / Data | Workflow start contract changes for recipe-backed runs while `agent.helloClaudex` can remain as legacy MVP path. | Reversible | Introduce a new workflow type for recipe-backed runs instead of mutating the existing workflow contract in place. |
 | Add approval queue item and decision Update contract | Data / API | New query and Update payloads must remain versioned for long-running workflows. | Reversible | Include queue item version, workflow execution ID, gate revision, decision type, actor, and `DecisionResult` version in every queue item and decision Update. |
 | Add review packet artifact contract | Data | Triage output becomes a durable artifact referenced by queue item IDs. | Reversible | Store packets as derived artifacts that can be regenerated from queue state. |
@@ -352,13 +380,16 @@ Complete
 ## 15. Control Logic and Non-Functional Controls
 
 Control logic summary:
-A workflow start request resolves a registry recipe to an immutable snapshot, allocates or receives a worktree according to execution profile requirements, initializes visibility metadata, and starts a Temporal recipe interpreter. The interpreter schedules one step at a time unless the recipe explicitly declares fanout. Each step activity receives only the step input, pinned execution profile, worktree or read-only bundle path, prior summary references, and artifact refs needed for that step. Completed steps advance the recipe cursor. Blocked steps create approval queue items and upsert queue visibility metadata. Approval, rejection, and abandonment decisions are submitted only through Temporal Updates; accepted decisions require workflow execution ID, queue item ID, gate revision, actor authority, and decision type to match the active blocked state, and every Update returns a typed `DecisionResult`.
+A workflow start request resolves a registry recipe to an immutable snapshot, allocates or receives a worktree according to execution profile requirements, initializes visibility metadata, and starts a Temporal recipe interpreter. Before publication or start, the registry compiler validates workflow-unit contracts and derives compatibility diagnostics; runtime execution consumes the resolved snapshot rather than a live compatibility query. The interpreter schedules one step at a time unless the recipe explicitly declares fanout or a bounded loop. Each step activity receives only the step input, pinned execution profile, worktree or read-only bundle path, prior summary references, and artifact refs needed for that step. Completed steps advance the recipe cursor according to typed transition guards. Blocked steps create approval queue items and upsert queue visibility metadata. Approval, rejection, and abandonment decisions are submitted only through Temporal Updates; accepted decisions require workflow execution ID, queue item ID, gate revision, actor authority, and decision type to match the active blocked state, and every Update returns a typed `DecisionResult`.
+
+Composition compatibility model:
+Workflow composition is contract-based. Primitive steps, adapter steps, and composite recipes export the same workflow-unit contract shape. The registry validator or catalog builder derives compatibility edges from producer outputs, consumer inputs, artifact requirements, gate handling, side-effect class, execution-profile constraints, and declared adapters. Derived edges are classified as `compatible`, `adapter_required`, or `incompatible` with reasons. The graph is metadata-only, rebuildable from source records, and not runtime workflow state.
 
 Decision Update validator model:
 Decision Update validators are read-only and non-blocking. They may reject only malformed, undecodable, or schema-incompatible payloads before the Update event is written. Semantic decision failures, including unauthorized actors, missing queue item IDs, mismatched workflow execution IDs, unsupported decision types, stale gate revisions, and no-effect decisions, are handled by the Update handler so callers receive a typed `DecisionResult`. The handler performs any deterministic state transition and returns `accepted`, `rejected`, `stale`, `invalid`, or `no_effect` without calling activities, fetching registry state, or loading artifacts.
 
 Concurrency and ordering model:
-The MVP default is sequential execution. Fanout is allowed only for explicitly declared subworkflows such as consensus review. Consensus review should be represented as child workflows when reviewer branches need independent retry policies, cancellation behavior, partial-failure handling, or history isolation; a single step activity is acceptable only when the provider runner remains one bounded black-box turn with no independent branch lifecycle. A queue item has one active gate revision. A decision can affect only the workflow execution and gate revision named in the Update. Triage may read many queue items concurrently but has no write authority over workflow state.
+The MVP default is sequential execution. Fanout is allowed only for explicitly declared subworkflows such as consensus review. Consensus review should be represented as child workflows when reviewer branches need independent retry policies, cancellation behavior, partial-failure handling, or history isolation; a single step activity is acceptable only when the provider runner remains one bounded black-box turn with no independent branch lifecycle. Loops are allowed only through typed guard transitions with loop IDs, maximum iterations, carried state, and terminal fallback. A queue item has one active gate revision. A decision can affect only the workflow execution and gate revision named in the Update. Triage may read many queue items concurrently but has no write authority over workflow state.
 
 Failure recovery model:
 Read-only steps may be retried according to declared retry policy. Mutating steps use conservative retry defaults and may retry only when an idempotency key template and retry taxonomy are declared. Activity-level LLM, GitHub, Linear, filesystem, and provider client retries are disabled so Temporal owns the durable retry policy, retry visibility, and idempotency accounting. Retryable errors include rate limits, timeouts, transient network failures, and temporary server failures. Non-retryable errors include invalid inputs, authentication failures, missing resources, content or capability-policy violations, schema validation failures, and protected-path enforcement failures. Cancellation stops the active activity through heartbeat-backed delivery and provider abort propagation where supported. Provider session loss triggers fresh-session fallback when workflow-owned state is sufficient. Queue item projection can be rebuilt from workflow state and artifacts if derived storage is lost.
@@ -393,6 +424,9 @@ Capability enforcement is not prompt-based. Registry validation rejects recipes 
 | REQ-14 | TECH-10 | Triage packager is bounded and testable against seed queues. |
 | REQ-15 | TECH-8, TECH-12, TECH-13 | Workflow state stays compact and large agent artifacts remain outside history. |
 | REQ-16 | TECH-5, TECH-15 | Interpreter evolution is gated by replay tests and Temporal versioning strategy. |
+| REQ-17 | TECH-16 | Primitive and composite workflow units export a shared typed interface. |
+| REQ-18 | TECH-17, TECH-18 | Compatibility is derived from source contracts and explicit adapters. |
+| REQ-19 | TECH-5, TECH-13, TECH-19 | Looping recipes are bounded, typed, and history-budget aware. |
 
 Section status:
 Complete
@@ -413,15 +447,17 @@ Complete
 | Retry/idempotency record | Audit | Records idempotency key, Temporal attempt, retry class, non-retryable error type, and nested client retry setting. | Operator and maintainer |
 | Replay compatibility result | Release gate | Records saved-history replay fixture, `Worker.runReplayHistory` result, and selected Temporal versioning strategy for command-sequence changes. | Maintainer and reviewer |
 | History budget gauge | Metric | Tracks history length, artifact-reference count, continue-as-new triggers, and projection rebuild status. | Operator and maintainer |
+| Registry compatibility diagnostics | Catalog output | Explains direct, adapter-required, incompatible, and composite-workflow-as-step edges derived from workflow-unit contracts and adapter records. | Registry reviewer and operator |
+| Loop guard and iteration record | Audit | Records loop ID, iteration count, guard outcome, carried state reference, terminal fallback, and history-budget behavior. | Workflow reviewer and operator |
 
 Rollout plan:
-Phase 1 defines registry schemas and validation for recipes, step definitions, and `execution-profile` records using fake steps only, including retry taxonomy and idempotency-key templates. Phase 2 adds a new recipe-backed Temporal workflow that runs fake activities, emits queue items, upserts queue visibility metadata, and resumes by decision Update. Phase 3 adds worktree allocation, heartbeat-backed cancellation, and execution profile enforcement for fake write/read-only steps. Phase 4 adapts the five known skills into typed step definitions and enforces regular-activity execution for agent/provider/tool steps. Phase 5 enables read-only queue triage and consensus review packaging, using child workflows when reviewer branches need independent lifecycle controls. Phase 6 runs live opt-in smoke tests against local provider auth and local worktrees. Every phase that changes the recipe interpreter includes saved-history replay verification before acceptance.
+Phase 1 resolves BEL-910, then defines registry schemas and validation for workflow-unit contracts, recipes, step definitions, adapter definitions, compatibility diagnostics, loop/guard fields, and `execution-profile` records using fake steps only, including retry taxonomy and idempotency-key templates. Phase 2 adds a new recipe-backed Temporal workflow that runs fake activities, emits queue items, upserts queue visibility metadata, and resumes by decision Update. Phase 3 adds worktree allocation, heartbeat-backed cancellation, and execution profile enforcement for fake write/read-only steps. Phase 4 adapts the five known skills into typed step definitions and enforces regular-activity execution for agent/provider/tool steps. Phase 5 enables read-only queue triage and consensus review packaging, using child workflows when reviewer branches need independent lifecycle controls. Phase 6 runs live opt-in smoke tests against local provider auth and local worktrees. Every phase that changes the recipe interpreter includes saved-history replay verification before acceptance.
 
 Rollback or containment plan:
 Rollback trigger is any failed capability-policy negative test, stale gate resume defect, queue item identity collision, or unintended protected-path write from a read-only execution profile. Rollback action is to disable recipe-backed workflow starts, keep existing `agent.helloClaudex` MVP workflow available, preserve run worktrees for inspection, and revert registry recipe or execution profile publication to the last validated commit. Reversibility is strong for schema additions and workflow type additions because running recipe-backed workflows can be cancelled or abandoned without changing the legacy workflow path. If CND-1 resolves to evolving `agent.helloClaudex` in place, implementation cannot proceed until an equivalent rollback path preserves the last validated bounded-turn workflow behavior.
 
 Operator actions:
-Operators can start a recipe-backed run, query run state, list queue items through the chosen visibility path, generate triage packets, approve or reject queue items through decision Updates, cancel active runs, abandon blocked runs through decision Updates, inspect run artifacts, inspect run worktrees, inspect replay/versioning gate results, and disable new recipe-backed starts by removing or pinning the registry execution profile used by the starter.
+Operators can start a recipe-backed run, query run state, list queue items through the chosen visibility path, generate triage packets, approve or reject queue items through decision Updates, cancel active runs, abandon blocked runs through decision Updates, inspect run artifacts, inspect run worktrees, inspect registry compatibility diagnostics, inspect loop iteration records, inspect replay/versioning gate results, and disable new recipe-backed starts by removing or pinning the registry execution profile used by the starter.
 
 Section status:
 Complete
@@ -450,6 +486,11 @@ Complete
 | VAL-18 | Test / Inspection | Queue listing uses Temporal Visibility search attributes or the durable projection, 50 pending items meet the local listing SLA, workflow histories store compact artifact references, and projection rebuild or continue-as-new behavior is exercised. | REQ-11, REQ-14, REQ-15, CON-11, TECH-8, TECH-13 |
 | VAL-19 | Release gate / Replay test | Any recipe-interpreter command-sequence change has saved-history replay evidence and an explicit patching, workflow-type, Worker Versioning, or termination/migration decision before merge. | REQ-16, CON-13, TECH-15 |
 | VAL-20 | Test / Inspection | Activity retry policy disables nested provider-client retries, classifies retryable and non-retryable errors, and requires stable idempotency keys for retryable mutating activities. | REQ-12, TECH-3, TECH-14 |
+| VAL-21 | Test / Inspection | Registry validation or catalog generation emits compatibility diagnostics for one direct compatible edge, one adapter-required edge, one incompatible edge, and one composite-workflow-as-step edge, all derived from workflow-unit contracts and adapter records. | REQ-17, REQ-18, CON-15, TECH-16, TECH-17, TECH-18 |
+| VAL-22 | Test / Inspection | Registry validation accepts a bounded review/fix/review loop only when it declares typed guard predicates, loop ID, carried state, maximum iterations, terminal fallback, and history-budget behavior, and rejects loops missing those fields. | REQ-19, CON-15, TECH-19 |
+
+Execution-spec mapping:
+Design `VAL-21` maps to execution `VAL-19` / `EVD-19`; design `VAL-22` maps to execution `VAL-20` / `EVD-20`.
 
 | Behavior or requirement | Mechanisms | Verification |
 | --- | --- | --- |
@@ -469,6 +510,9 @@ Complete
 | REQ-14 | TECH-10 | VAL-9 |
 | REQ-15 | TECH-8, TECH-12, TECH-13 | VAL-18 |
 | REQ-16 | TECH-5, TECH-15 | VAL-2, VAL-19 |
+| REQ-17 | TECH-16 | VAL-21 |
+| REQ-18 | TECH-17, TECH-18 | VAL-21 |
+| REQ-19 | TECH-5, TECH-13, TECH-19 | VAL-22 |
 | Rollback control | TECH-1, TECH-3, TECH-4, TECH-5, TECH-11 | VAL-17 |
 | FUNC-1 | TECH-1, TECH-2, TECH-3 | VAL-1, VAL-11 |
 | FUNC-2 | TECH-5, TECH-8, TECH-12, TECH-13 | VAL-7 |
@@ -489,6 +533,7 @@ Alternatives considered:
 | ALT-2: One large prompt for the whole happy path | Appears simple and keeps orchestration inside one agent turn. | It makes gates, contracts, retries, triage, and execution profile enforcement opaque. |
 | ALT-3: Store live queue state in `agent-config-registry` | Keeps workflow-related data in one Git-backed place. | The registry is appropriate for versioned configuration, not fast-changing workflow state. |
 | ALT-4: Build a hosted workflow service immediately | Could provide a richer UX sooner. | The existing local Temporal and zero-dollar registry direction is sufficient to prove the control-plane model. |
+| ALT-5: Hand-author compatibility graph edges as source records | Could make graph output easy to inspect. | It makes source truth drift likely; compatibility should be derived from workflow-unit contracts and explicit adapter records. |
 
 Risks:
 
@@ -502,6 +547,8 @@ Risks:
 | RISK-6 | Queue listing could become slow or history-heavy as blocked runs accumulate. | Medium | Medium | Use search attributes or a rebuildable projection, keep workflow state compact, and verify the 50-item listing SLA with history-budget checks. |
 | RISK-7 | Retried mutating activities could duplicate external or filesystem side effects. | Medium | High | Require idempotency keys, explicit retry taxonomy, disabled nested client retries, and non-retryable classification for validation/auth/policy failures. |
 | RISK-8 | Recipe-interpreter changes could break replay for in-flight workflows. | Medium | High | Require saved-history replay tests and patching, workflow-type, Worker Versioning, or migration decisions for command-sequence changes. |
+| RISK-9 | Compatibility graph complexity could turn the registry into an accidental runtime platform. | Medium | Medium | Keep the registry as a static compiler, derive metadata-only graph diagnostics, and defer any microservice until explicit service trigger conditions exist. |
+| RISK-10 | Looping recipes could run indefinitely or hide unresolved review/fix findings. | Medium | High | Require typed guard predicates, maximum iterations, terminal fallback, compact artifacts, and continue-as-new/history-budget controls before enabling loop recipes. |
 
 Open questions:
 
@@ -515,25 +562,28 @@ Resolved implementation decisions:
 | --- | --- | --- |
 | D-1 | `consensus-review` uses child workflows when reviewer branches need independent retry policies, cancellation behavior, partial-failure handling, or history isolation; a single step activity is allowed only for one bounded black-box provider turn. | This keeps fanout lifecycle, history growth, and failure isolation explicit without over-modeling simple runner calls. |
 | D-2 | Agent/provider/tool execution does not use Local Activities. | Long-running, side-effectful, cancellation-sensitive work needs regular activity durability, visibility, timeout, heartbeat, and retry behavior. |
+| D-3 | `agent-config-registry` remains a static configuration compiler for the MVP; no registry microservice is introduced. | Current requirements need deterministic validation, catalog generation, and pinned snapshots, not live registry state, auth, deployment, or remote availability. |
+| D-4 | Compatibility graph edges are derived from workflow-unit contracts and explicit adapter definitions rather than hand-authored as source truth. | Derived graph output keeps composition explainable while preventing source-of-truth drift. |
+| D-5 | BEL-910 approved on 2026-05-01: source-of-truth workflow records use additive non-installable registry package kinds for `workflow-recipe`, `step-definition`, `adapter-definition`, and `execution-profile`; `workflowUnitContract` is an embedded schema field on step definitions and composite recipes; loop/guard semantics are fields on `workflow-recipe` transitions; compatibility graph output is derived catalog metadata only. | This reuses the existing package-kind/catalog/digest model for versioned source records, avoids standalone graph or loop source truth, keeps install targets empty like sync `profile`, and lets composite recipes compose as typed workflow units without a registry service. |
 
 Waivers: none
 
 Final readiness statement:
-Ready with heightened controls
+Ready with heightened controls; BEL-910 is resolved by D-5. WP-2 may proceed when the remaining execution-spec entry dependencies and registry dependency readiness are satisfied.
 
 Section status:
 Complete
 
 ## Final Consistency Gate
 
-The problem is current and evidenced by the existing hard-coded workflow and the desired five-skill roadmap. Requirements define declarative recipes, pinned snapshots, typed step contracts, execution profile enforcement, queue items, decision Updates, triage packets, worktree isolation, visibility controls, compact artifact references, replay compatibility, and recovery. Layer 2 defines externally observable start, gate, decision Update, triage, execution profile, queue listing, and registry-change behaviors. Layer 3 allocates mechanisms across `agent-config-registry`, `workflow-temporal`, activity runtime, worktree manager, artifact store, visibility/projection controls, replay/versioning gates, and triage packager. Verification covers the highest-risk claims: execution profile enforcement, stale approval rejection, pinned snapshots, heartbeat-backed cancellation, retry/idempotency, abandonment, provider-session fallback, worktree isolation, history-budget controls, replay compatibility, rollback, and no hosted dependency.
+The problem is current and evidenced by the existing hard-coded workflow and the desired five-skill roadmap. Requirements define declarative recipes, pinned snapshots, typed step contracts, exported workflow-unit contracts, derived compatibility diagnostics, explicit adapters, bounded loop transitions, execution profile enforcement, queue items, decision Updates, triage packets, worktree isolation, visibility controls, compact artifact references, replay compatibility, and recovery. Layer 2 defines externally observable start, compatibility evaluation, bounded loop execution, gate, decision Update, triage, execution profile, queue listing, and registry-change behaviors. Layer 3 allocates mechanisms across `agent-config-registry`, `workflow-temporal`, activity runtime, worktree manager, artifact store, compatibility graph builder, visibility/projection controls, replay/versioning gates, and triage packager. Verification covers the highest-risk claims: execution profile enforcement, stale approval rejection, pinned snapshots, heartbeat-backed cancellation, retry/idempotency, abandonment, provider-session fallback, worktree isolation, compatibility graph fixture coverage, loop guard coverage, history-budget controls, replay compatibility, rollback, and no hosted dependency.
 
 ## Internal Review Record
 
 | Field | Value |
 | --- | --- |
 | Document | Composable Agent Workflow Control Plane |
-| Review date | 2026-04-30 |
+| Review date | 2026-05-01 |
 | Moderator | Codex |
 | Decision owner | Jason Belmonti |
 | Proposed rigor level | `R3` |
@@ -546,8 +596,8 @@ The problem is current and evidenced by the existing hard-coded workflow and the
 | Open findings | none |
 | Resolved findings verified in this decision | ST-1, SM-1, TR-1, CR-1, CR-2, CR-3, PR-1, PR-2, TS-1, TS-2, TS-3, TS-4, TS-5 |
 | Reviewed waivers | none |
-| Required heightened controls | HC-1, HC-2, HC-3, HC-4, HC-5, HC-6, HC-7 |
-| Approval conditions | CND-1, CND-2 |
+| Required heightened controls | HC-1, HC-2, HC-3, HC-4, HC-5, HC-6, HC-7, HC-8 |
+| Approval conditions | CND-1, CND-2, CND-3 |
 | Top blockers | none |
 | Required follow-ups | Resolve Q-1 before implementation reaches its named phase gate. |
 
@@ -580,6 +630,7 @@ The problem is current and evidenced by the existing hard-coded workflow and the
 | HC-5 | Implementation / Launch | Human gate decisions use Temporal Updates with typed `DecisionResult`; stale, invalid, unauthorized, and no-effect decisions must not resume a workflow. | `workflow-temporal` maintainer | VAL-5 |
 | HC-6 | Implementation / Launch | Recipe-interpreter changes require saved-history replay evidence and an explicit Temporal versioning strategy before merge. | `workflow-temporal` maintainer | VAL-2, VAL-19 |
 | HC-7 | Implementation / Launch | Agent activities require heartbeat-backed cancellation, idempotency-scoped retry policy, and compact artifact-reference state before live provider use. | Activity runtime owner | VAL-13, VAL-18, VAL-20 |
+| HC-8 | Implementation / Launch | Registry workflow composition requires workflow-unit contracts, derived compatibility graph diagnostics, explicit adapters for non-direct composition, and bounded loop/guard semantics before WP-2. | `agent-config-registry` maintainer | VAL-21, VAL-22 |
 
 ### Approval Conditions
 
@@ -587,3 +638,4 @@ The problem is current and evidenced by the existing hard-coded workflow and the
 | --- | --- | --- | --- |
 | CND-1 | Implementation start | Approve whether the recipe-backed workflow is a new workflow type or an evolution of `agent.helloClaudex`; default recommendation is a new workflow type. | Jason Belmonti |
 | CND-2 | Launch | Independent capability-policy reviewer signs off on read-only execution profile negative tests. | Independent capability-policy reviewer |
+| CND-3 | Before WP-2 registry workflow records | Satisfied on 2026-05-01 by BEL-910 approval of D-5; any revision to workflow-unit contracts, adapter definitions, derived compatibility graph output, loop/guard fields, pinned snapshot compatibility, or the no-microservice MVP boundary must reopen BEL-910 or record an approved deviation. | Jason Belmonti and registry contract reviewer |
