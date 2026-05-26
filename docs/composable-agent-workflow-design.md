@@ -12,7 +12,7 @@
 | Reviewers | Jason Belmonti; Codex implementation reviewer; independent capability-policy reviewer |
 | Decision owner | Jason Belmonti |
 | Target milestone or release | Composable workflow MVP |
-| Last updated | 2026-05-01 |
+| Last updated | 2026-05-25 |
 | Related docs | Current roadmap conversation on 2026-04-29; `docs/hello-claudex-mvp.md`; `agent-config-registry/docs/zero-dollar-agent-config-registry-design.md`; `agent-config-registry/docs/zero-dollar-agent-config-registry-execution.md` |
 | Related tickets | BEL-910 |
 
@@ -433,7 +433,7 @@ Complete
 
 ## 16. Observability, Operations, Rollout, and Rollback
 
-| Operational record | Type | Purpose | Consumer |
+| Signal | Type | Purpose | Consumer |
 | --- | --- | --- | --- |
 | Run state query result | Audit | Shows recipe snapshot, current step, workflow status, worktree or read-only bundle path, and execution profile identifiers. | Operator and triage tooling |
 | Queue item count by status | Metric | Detects gate backlog and blocked work accumulation. | Operator |
@@ -519,6 +519,7 @@ Design `VAL-21` maps to execution `VAL-19` / `EVD-19`; design `VAL-22` maps to e
 | FUNC-3 | TECH-8, TECH-9, TECH-13 | VAL-5, VAL-8, VAL-18 |
 | FUNC-4 | TECH-3, TECH-7 | VAL-4, VAL-10 |
 | FUNC-5 | TECH-8, TECH-13 | VAL-18 |
+| FUNC-6 | TECH-16, TECH-17, TECH-18 | VAL-21 |
 
 Section status:
 Complete
@@ -583,18 +584,18 @@ The problem is current and evidenced by the existing hard-coded workflow and the
 | Field | Value |
 | --- | --- |
 | Document | Composable Agent Workflow Control Plane |
-| Review date | 2026-05-01 |
+| Review date | 2026-05-25 |
 | Moderator | Codex |
 | Decision owner | Jason Belmonti |
 | Proposed rigor level | `R3` |
 | Reviewed rigor level | `R3` |
 | Calibration result | Accept |
-| Structural result | Pass after consensus revision |
-| Semantic result | Pass after consensus revision |
-| Traceability result | Pass after consensus revision |
+| Structural result | Pass after consensus revision and May 25 validation revision |
+| Semantic result | Pass after consensus revision and May 25 validation revision |
+| Traceability result | Pass after consensus revision and May 25 validation revision |
 | Verdict | Draft is ready for human review; requested decision remains `Approve with heightened controls` |
 | Open findings | none |
-| Resolved findings verified in this decision | ST-1, SM-1, TR-1, CR-1, CR-2, CR-3, PR-1, PR-2, TS-1, TS-2, TS-3, TS-4, TS-5 |
+| Resolved findings verified in this decision | ST-1, SM-1, TR-1, CR-1, CR-2, CR-3, PR-1, PR-2, TS-1, TS-2, TS-3, TS-4, TS-5, VR-1, VR-2 |
 | Reviewed waivers | none |
 | Required heightened controls | HC-1, HC-2, HC-3, HC-4, HC-5, HC-6, HC-7, HC-8 |
 | Approval conditions | CND-1, CND-2, CND-3 |
@@ -618,6 +619,8 @@ The problem is current and evidenced by the existing hard-coded workflow and the
 | TS-3 | Major | Resolved | 4, 8, 10, 13, 14, 15, 16, 17 | Temporal skill review found cross-run queue listing and history growth underspecified. | Add search attributes or durable projection, compact artifact-reference state, history-budget controls, continue-as-new threshold, and projection rebuild verification. | Codex |
 | TS-4 | Major | Resolved | 4, 5, 13, 15, 17 | Temporal skill review found replay compatibility under-specified for recipe-interpreter changes. | Add saved-history replay tests, `Worker.runReplayHistory`, and explicit patching/workflow-type/Worker Versioning decision gates. | Codex |
 | TS-5 | Major | Resolved | 9, 10, 13, 15, 17, 18 | Temporal skill review recommended stronger retry/idempotency, consensus fanout, and Local Activity controls. | Add idempotency keys, retry error taxonomy, disabled nested client retries, child-workflow fanout rule, and Local Activity exclusion for agent execution. | Codex |
+| VR-1 | Major | Resolved | 16 | May 25 validation found the observability table did not match the controlled `Signal` column expected by the design validation profile. | Rename the first observability table column from `Operational record` to `Signal`. | Codex |
+| VR-2 | Major | Resolved | 17 | May 25 validation found `FUNC-6` lacked direct behavior-to-mechanism verification coverage in section 17. | Add the `FUNC-6` traceability row mapping reuse inspection to `TECH-16`, `TECH-17`, `TECH-18`, and `VAL-21`. | Codex |
 
 ### Heightened Controls
 
